@@ -17,7 +17,11 @@ from setuptools import setup, find_packages
 import itertools as it
 
 # the basic needed requirements for a package
-base_requirements = []
+base_requirements = [
+    'invoke',
+    'click',
+    'fabric',
+]
 
 # extras requirements list
 

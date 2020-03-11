@@ -46,3 +46,8 @@ pytest-benchmark
 pytest-profiling
 
 
+# dependencies
+invoke
+click
+fabric
+
