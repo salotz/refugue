@@ -51,3 +51,4 @@ invoke
 click
 fabric
 
+py_rsync

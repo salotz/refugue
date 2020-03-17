@@ -1,7 +1,431 @@
+import dataclasses as dc
+from pathlib import Path
+from enum import Enum
+from typing import (
+    Optional,
+    Union,
+    Tuple,
+)
+
+from fabric import connection
+import py_rsync as rsync
+
+__all__ = [
+    'WorkingSet',
+    'PeerType',
+    'Peer',
+    'PeerHost',
+    'PeerDrive',
+    'Connection',
+    'Replica',
+    'Image',
+]
 
 
-@task()
-def refugue_rsync(local_ctx, source=None, target=None,
+@dc.dataclass
+class Connection():
+    """Abstract connection."""
+
+    host: str
+    user: str
+    # TODO: implement jump connection
+    # jumps: Optional[ Tuple[Connection] ]
+
+def concrete_connection(conn):
+
+    return _fabric_connection(conn)
+
+def _fabric_connection(conn):
+
+    fconn = Connection(
+        conn.host,
+        user=conn.user
+    )
+
+    return conn
+
+
+class PeerType(Enum):
+    HOST = 1
+    DRIVE = 2
+
+@dc.dataclass
+class Peer():
+
+    name: str
+
+@dc.dataclass
+class PeerHost(Peer):
+
+    aliases: Optional[ Tuple[str] ]
+    node_aliases: Optional[ Tuple[str] ]
+
+@dc.dataclass
+class PeerDrive(Peer):
+
+    pass
+
+@dc.dataclass
+class WorkingSet():
+
+    name: str
+    includes: Union[ Tuple[str], Ellipsis ]
+    excludes: Union[ Tuple[str], Ellipsis ]
+
+@dc.dataclass
+class Replica():
+
+    peer: Peer
+    refinement: Tuple[str]
+    wset: WorkingSet
+    prefix: Path
+
+
+@dc.dataclass
+class Image():
+
+    pass
+
+@dc.dataclass
+class Network():
+
+    peers: Tuple[Peer]
+    replicas: Tuple[Peer]
+    image: Image
+
+# protocol libraries
+
+@dc.dataclass
+class SyncProtocol():
+
+    pass
+
+@dc.dataclass
+class RsyncSyncProtocol(SyncProtocol):
+    pass
+
+@dc.dataclass
+class SyncPair():
+
+    src: Replica
+    target: Replica
+
+    def sync(self, cx, sync_protocol):
+
+        sync_func = sync_protocol.gen_func(self.src, self.target)
+
+        sync_func(cx)
+
+
+
+
+def check_fq_replica(replica_spec):
+
+    tokens = replica_spec.split('/')
+
+    passes = True
+
+    if len(tokens) < 2:
+        passes = False
+
+        #raise ValueError("No refinement given for the peer")
+
+    return passes
+
+
+def normalize_replica(replica):
+    """Take a partial replica spec and return the fully-qualified one
+    (normalized).
+
+    Replicas which are already normalized will be returned unaltered.
+
+    """
+
+    # the peer is always the first term in the replica refinement
+    tokens = replica.split('/')
+
+    peer = tokens.pop(0)
+
+    # if there are no tokens left we have to get the default
+    # refinement for this host
+    if len(tokens) == 0:
+
+        # if a specific default refinement is set for this peer, then
+        # use that
+        if peer in DEFAULT_PEER_REFINEMENTS:
+            refinement = DEFAULT_PEER_REFINEMENTS[peer]
+
+        # otherwise choose the appropriate default for the peer or peer type
+        else:
+
+            peer_type = resolve_peer_type(peer)
+
+            if peer_type is None:
+                raise ValueError(
+                    "Unknown peer and peer type for replica {} cannot resolve a refinement".format(
+                        replica))
+
+            else:
+                if peer_type in DEFAULT_PEER_TYPE_REFINEMENTS:
+                    refinement = DEFAULT_PEER_TYPE_REFINEMENTS[peer_type]
+                else:
+                    raise ValueError(
+                        "No default refinement set for this peer type {}".format(
+                            peer_type))
+
+    # otherwise just put the refinement back together and return
+    else:
+        refinement = '/'.join(tokens)
+
+    # return the fully-qualified replica name
+    fq_replica = '{}/{}'.format(peer, refinement)
+
+    return fq_replica
+
+def resolve_peer_type(peer):
+
+    peer_type = None
+
+    if peer in HOSTS:
+        peer_type = 'host'
+
+    elif peer in DRIVES:
+        peer_type = 'drive'
+
+    return peer_type
+
+def resolve_peer_mount(peer, local_context):
+    """Given a peer identity and the local context determine the context
+    that should be used to access it (either a fabric.Connection for
+    remote or a invoke.Context for local).
+
+    """
+
+    peer_type = resolve_peer_type(peer)
+
+    # HOST peers can be across a network and found via a Connection
+    if peer_type == 'host':
+
+        # check to see if our local context is on the peer, by getting
+        # the node of the peer and the node we are on (the node is not
+        # a fully-qualified domain name FQDN and is what is returned
+        # by `platform.node()`)
+
+        # first resolve the alias of the peer if there is one
+        if peer in HOST_NODE_ALIASES:
+            peer_node_aliases = HOST_NODE_ALIASES[peer]
+
+        # otherwise the peer name is the node name
+        else:
+            peer_node_aliases = [peer]
+
+        # if the peer is this node we choose the local_context as the
+        # peer context
+        if platform.node() in peer_node_aliases:
+            context = local_context
+
+        # otherwise we get the connection spec for this peer and
+        # generate a Connection object for it
+        else:
+            context = construct_connection(HOST_CONNECTIONS[peer])
+
+        # STUB: This isn't needed but shows a wayt o move forward in
+        # generalization
+
+        # # Since hosts cannot be mounted on other hosts, we assume that
+        # # the host peer is the root file-system (i.e. is mounted on
+        # # the hardware 'hw')
+        # mount_spec = ('host', 'hw')
+
+        # # the directory
+        # mount_type_dir = PEER_MOUNT_PREFIX_TYPES[mount_spec]
+
+        # # STUB: Alternatively we can look for hosts which are mounted
+        # # to the local host peer node. This assert just says that we
+        # # expect this to only be the None spec I.e. no path
+        # assert mount_type_dir is None
+
+        mount_prefix = None
+
+
+    # DRIVE peers are assumed to be mounted on the local host node
+    # peer
+    elif peer_type == 'drive':
+
+        # the context is always the local one
+        context = local_context
+
+        mount_spec = ('drive', 'host')
+
+        # STUB: in the future we may support remote drives mounted on
+        # other hosts, which will be handled with a peer mini-DSL
+        # e.g. 'drive@host' or something similar
+
+        # STUB: we only support drives at a single place without
+        # customization. If you want to customize this make a new
+        # grouping and set the option in PEER_MOUNT_PREFIX_TYPES
+
+        # get the directory where drives are mounted in
+        mount_type_dir = PEER_MOUNT_PREFIX_TYPES[mount_spec]
+
+        # complete it with the name of the drive peer
+        mount_prefix = osp.join(mount_type_dir, peer)
+
+    elif peer_type is None:
+        raise ValueError("Unknown peer type {} for peer {}".format(peer_type, peer))
+    else:
+        raise ValueError("Unknown peer type {} for peer {}".format(peer_type, peer))
+
+    return context, mount_prefix
+
+def parse_fq_replica(fq_replica):
+
+    tokens = fq_replica.split('/')
+    peer = tokens[0]
+    refinement = '/'.join(tokens[1:])
+
+    return peer, refinement
+
+def resolve_replica(p_replica, local_ctx):
+    """Takes either a partially or fully-qualified replica spec."""
+
+    # get the peer and it's refinement
+    fq_replica = normalize_replica(p_replica)
+
+    # resolve the replica prefix path for the replica
+    replica_prefix = resolve_replica_prefix(fq_replica)
+
+    peer, refinement = parse_fq_replica(fq_replica)
+
+    # resolve the connection and the mount prefix for the peer given
+    # our current execution environment
+    peer_ctx, peer_mount_prefix = resolve_peer_mount(peer, local_ctx)
+
+    # if there is no peer mount prefix leave it out of the template
+    if peer_mount_prefix is None:
+
+        replica_path = "{replica_prefix}/{root}".format(
+            replica_prefix=replica_prefix,
+            root=ROOT_NAME,
+        )
+
+    else:
+        replica_path = "{peer_mount_prefix}/{replica_prefix}/{root}".format(
+            peer_mount_prefix=peer_mount_prefix,
+            replica_prefix=replica_prefix,
+            root=ROOT_NAME,
+        )
+
+    return fq_replica, peer, peer_ctx, replica_path
+
+def resolve_replica_prefix(fq_replica):
+    """Given a FQ replica spec, return the replica prefix path for the
+    replica peer."""
+
+    assert check_fq_replica(fq_replica), \
+        "Replica spec {} is not fully qualified".format(fq_replica)
+
+    # if the exact replica has been specified this takes precedence
+    if fq_replica in REPLICA_PREFIXES:
+        prefix = REPLICA_PREFIXES[fq_replica]
+
+    # otherwise we attempt to use the defaults for the refinement
+    else:
+
+        peer, refinement = parse_fq_replica(fq_replica)
+
+        if refinement in REFINEMENT_REPLICA_PREFIXES:
+            prefix = REFINEMENT_REPLICA_PREFIXES[refinement]
+
+        # if there is none it is an error
+        else:
+            raise ValueError("No prefix found for the replica: {}".format(fq_replica))
+
+    return prefix
+
+def is_default_refinement(fq_replica):
+
+    assert check_fq_replica(fq_replica), \
+        "Replica spec {} is not fully qualified".format(fq_replica)
+
+    peer, refinement = parse_fq_replica(fq_replica)
+    peer_type = resolve_peer_type(peer)
+
+    if peer in DEFAULT_PEER_REFINEMENTS:
+        def_ref = DEFAULT_PEER_REFINEMENTS[peer]
+
+    elif peer_type in DEFAULT_PEER_TYPE_REFINEMENTS:
+        def_ref = DEFAULT_PEER_TYPE_REFINEMENTS[peer_type]
+
+    else:
+        def_ref = None
+
+    if refinement == def_ref:
+        return True
+
+    elif def_ref is None:
+        return False
+
+    else:
+        return False
+
+
+def get_working_sets(fq_replica):
+    """Given a fq-replica return the working set (includes and excludes)
+    for it."""
+
+    assert check_fq_replica(fq_replica), \
+        "Replica spec {} is not fully qualified".format(fq_replica)
+
+    peer, refinement = parse_fq_replica(fq_replica)
+    default_refinement_flag = is_default_refinement(fq_replica)
+
+    # if the FQ replica is in the includes this takes precedence
+    if fq_replica in REPLICA_INCLUDES:
+        includes = REPLICA_INCLUDES[fq_replica]
+
+    # otherwise if this refinement is the default one we look to see
+    # if the default partially qualified replica is in the list,
+    # e.g. for 'host/home' fq-replica we probably will find just
+    # 'host' in the listing
+    elif peer in REPLICA_INCLUDES and default_refinement_flag:
+        includes = REPLICA_INCLUDES[peer]
+
+    else:
+        includes = []
+
+    if fq_replica in REPLICA_EXCLUDES:
+        excludes = REPLICA_EXCLUDES[fq_replica]
+
+    # otherwise if this refinement is the default one we look to see
+    # if the default partially qualified replica is in the list,
+    # e.g. for 'host/home' fq-replica we probably will find just
+    # 'host' in the listing
+    elif peer in REPLICA_EXCLUDES and default_refinement_flag:
+        excludes = REPLICA_EXCLUDES[peer]
+
+    else:
+        excludes = []
+
+
+    # handle special values
+
+    # if we exclude '...' we are excluding everything
+    if excludes is Ellipsis:
+        excludes = ['*']
+
+    # to include everything (...) we just don't tell it to do anything
+    if includes is Ellipsis:
+        includes = []
+
+    # TODO: make includes ... and excludes ... a warning
+
+    return includes, excludes
+
+
+def refugue_rsync(local_ctx,
+                  source=None,
+                  target=None,
                   dry=False,
                   safe=True,
                   ow_sync=False,
@@ -195,72 +619,3 @@ def refugue_rsync(local_ctx, source=None, target=None,
 
         src_ctx.run(command_str)
 
-
-@task
-def refugue_list_backups(local_cx, replica=None):
-
-    assert replica is not None, "Must give replica"
-
-    replica, peer, cx, path = resolve_replica(replica, local_cx)
-
-    print("getting real path")
-    realpath = cx.run('echo "{}"'.format(path), hide='out').stdout.strip()
-    print(realpath)
-
-    print("Running find.")
-
-    cx.run('find {} -name "*.rsync_backup" -print'.format(realpath))
-
-
-
-@task
-def refugue_diff_backups(local_cx, replica=None):
-
-    assert replica is not None, "Must give replica"
-
-    replica, peer, cx, path = resolve_replica(replica, local_cx)
-
-    print("getting real path")
-    realpath = cx.run('echo "{}"'.format(path), hide='out').stdout.strip()
-    print(realpath)
-
-    print("Running find.")
-
-    result = cx.run('find {} -name "*.rsync_backup" -print'.format(realpath), hide=True)
-    backup_paths = [Path(p) for p in result.stdout.strip().split('\n')]
-
-    # for each backup find the corresponding file
-    diff_pairs = []
-    for backup_path in backup_paths:
-        path = backup_path.parent / backup_path.stem
-
-        print("--------------------------------------------------------------------------------")
-        print("DIFF FOR: {}".format(path))
-        cx.run("diff {} {}".format(path, backup_path))
-
-
-@task
-def refugue_remove_backups(local_cx, replica=None):
-
-    from fabric import Connection
-
-    assert replica is not None, "Must give replica"
-
-    replica, peer, cx, path = resolve_replica(replica, local_cx)
-
-    print("getting real path")
-    realpath = cx.run('echo "{}"'.format(path), hide='out').stdout.strip()
-    print(realpath)
-
-    # if the source is remote execute on it's connection
-    if issubclass(type(cx), Connection):
-
-        print("Will execute on the source host via Fabric connection.")
-    else:
-        print("Executing locally.")
-
-    command = 'find {} -name "*.rsync_backup" -delete'.format(realpath)
-    print(command)
-    if confirm("Run this?", assume_yes=False):
-        print("Running find....")
-        cx.run(command)

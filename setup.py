@@ -21,6 +21,7 @@ base_requirements = [
     'invoke',
     'click',
     'fabric',
+    'py_rsync',
 ]
 
 # extras requirements list
