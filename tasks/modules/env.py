@@ -162,12 +162,12 @@ def deps_pin(cx, name=DEFAULT_ENV):
 @task
 def deps_pin_update(cx, name=DEFAULT_ENV):
 
-    deps_pip_update(cx,
+    deps_pip_pin(cx,
                     name=name,
                     upgrade=True,
     )
 
-    deps_conda_update(cx,
+    deps_conda_pin(cx,
                       name=name,
                       optional=True,
                       upgrade=True)
