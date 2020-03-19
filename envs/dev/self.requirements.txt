@@ -3,4 +3,5 @@
 # current working directoy is not a good idea since it will be
 # different on every machine.
 
+-e ../py_rsync
 -e .

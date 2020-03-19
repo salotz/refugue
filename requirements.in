@@ -1,3 +1,6 @@
 --index-url https://pypi.python.org/simple/
 
-.
+invoke
+click
+fabric
+py_rsync
