@@ -32,7 +32,7 @@ CONFIG_FIELDS = (
 class Config():
     ROOT_NAME: str
     HOST_NODE_ALIASES: Mapping[str, Sequence[str]]
-    PEER_ALIASES: Mappping[str, str]
+    PEER_ALIASES: Mapping[str, str]
     PEER_TYPES: Mapping[str, Sequence[str]]
     PEERS: Tuple[str]
     PEER_MOUNT_PREFIXES: Mapping[Tuple[str, str], str]
@@ -43,8 +43,8 @@ class Config():
     REPLICAS: Sequence[str]
     REFINEMENT_REPLICA_PREFIXES: Mapping[str, str]
     REPLICA_PREFIXES: Mapping[str, str]
-    REPLICA_EXCLUDES: Mapping[str, Union[Seqence[str], Ellipsis]]
-    REPLICA_INCLUDES: Mapping[str, Union[Seqence[str], Ellipsis]]
+    REPLICA_EXCLUDES: Mapping[str, Union[Sequence[str], type(Ellipsis)]]
+    REPLICA_INCLUDES: Mapping[str, Union[Sequence[str], type(Ellipsis)]]
 
 def load_config(path):
     """Load a python formatted config file.

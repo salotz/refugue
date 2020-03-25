@@ -6,8 +6,10 @@ from typing import (
     Union,
     Tuple,
     Callable,
+    Mapping,
 )
 
+from invoke import Context
 from fabric import connection
 import py_rsync as rsync
 
@@ -70,8 +72,8 @@ class PeerDrive(Peer):
 class WorkingSet():
 
     name: str
-    includes: Union[ Tuple[str], Ellipsis ]
-    excludes: Union[ Tuple[str], Ellipsis ]
+    includes: Union[ Tuple[str], type(Ellipsis) ]
+    excludes: Union[ Tuple[str], type(Ellipsis) ]
 
 @dc.dataclass
 class Replica():
@@ -173,7 +175,7 @@ class SyncProtocol():
 
 
 @dc.dataclass
-class RsyncSyncProtocol(SyncProtocol):
+class RsyncProtocol(SyncProtocol):
 
     @classmethod
     def validate_sync_spec(cls,
@@ -241,7 +243,7 @@ class RsyncSyncProtocol(SyncProtocol):
         # return this closure which is the callable that actually
         # executes the sync process
         def _sync_func(src_cx):
-            cx.run(command.render())
+            src_cx.run(command.render())
 
         return _sync_func
 
@@ -258,10 +260,7 @@ class SyncPair():
              sync_spec: SyncSpec,
     ):
 
-        # TODO: check to see if this connection is possible given
-        # current network topology
-
-        # then just run
+        # generate the function
         sync_func = sync_protocol.gen_sync_func(
             cx,
             self.src,
@@ -269,6 +268,7 @@ class SyncPair():
             sync_spec,
         )
 
+        # and run
         sync_func(cx)
 
 
