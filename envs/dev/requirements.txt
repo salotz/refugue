@@ -34,14 +34,14 @@ guzzle-sphinx-theme==0.7.11  # via -r envs/dev/requirements.in
 idna==2.9                 # via requests
 imagesize==1.2.0          # via sphinx
 invoke==1.4.1             # via -r envs/dev/requirements.in, fabric
-ipykernel==5.1.4          # via notebook
+ipykernel==5.2.0          # via notebook
 ipython-genutils==0.2.0   # via nbformat, notebook, traitlets
 ipython==7.13.0           # via -r envs/dev/requirements.in, ipykernel
 jedi==0.16.0              # via ipython
 jeepney==0.4.3            # via keyring, secretstorage
 jinja2==2.11.1            # via -r ../py_rsync/requirements.in, nbconvert, nbsphinx, notebook, sphinx
 jsonschema==3.2.0         # via nbformat
-jupyter-client==6.0.0     # via ipykernel, notebook
+jupyter-client==6.1.0     # via ipykernel, notebook
 jupyter-core==4.6.3       # via jupyter-client, nbconvert, nbformat, notebook
 keyring==21.2.0           # via twine
 lizard==1.17.3            # via -r envs/dev/requirements.in
@@ -77,7 +77,7 @@ pygments==2.6.1           # via ipython, nbconvert, pdbpp, readme-renderer, sphi
 pynacl==1.3.0             # via paramiko
 pyparsing==2.4.6          # via packaging
 pyrepl==0.9.0             # via fancycompleter
-pyrsistent==0.15.7        # via jsonschema
+pyrsistent==0.16.0        # via jsonschema
 pytest-benchmark==3.2.3   # via -r envs/dev/requirements.in
 pytest-cov==2.8.1         # via -r envs/dev/requirements.in
 pytest-datadir==1.3.1     # via -r envs/dev/requirements.in
@@ -112,8 +112,8 @@ tqdm==4.43.0              # via twine
 traitlets==4.3.3          # via ipykernel, ipython, jupyter-client, jupyter-core, nbconvert, nbformat, nbsphinx, notebook
 twine==3.1.1              # via -r envs/dev/requirements.in
 urllib3==1.25.8           # via requests
-virtualenv==20.0.11       # via tox
-wcwidth==0.1.8            # via prompt-toolkit, pytest
+virtualenv==20.0.13       # via tox
+wcwidth==0.1.9            # via prompt-toolkit, pytest
 webencodings==0.5.1       # via bleach
 wheel==0.34.2             # via -r envs/dev/requirements.in
 wmctrl==0.3               # via pdbpp
