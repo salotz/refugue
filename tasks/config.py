@@ -8,3 +8,11 @@ from .sysconfig import *
 
 # PROJECT_SLUG = ""
 
+
+
+## Admin
+
+MOCK_HOME = '$HOME/tmp/refugue-tests/mock_home'
+
+DEFAULT_USER_SPEC = 'tests/jigs/dev/users.toml'
+SKEL_DIR = 'tests/jigs/dev/skel'

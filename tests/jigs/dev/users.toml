@@ -1,0 +1,16 @@
+
+username_prefix = 'refugue-test_'
+groups = [
+       'refugue-test'
+]
+default_comment = "For testing refugue package"
+
+[[users]]
+
+id = "00"
+comment = "Test"
+password = 'Vae7Quae'
+shell = '/bin/bash'
+groups = [
+       'refugue-test',
+]

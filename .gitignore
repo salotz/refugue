@@ -1,6 +1,9 @@
 
 ## Project specific
 
+# the mock directory of testing home directories for users
+tests/_mock_home
+
 # sphinx
 
 # this is where the converted files reside which are inputs to sphinx

@@ -1,0 +1,59 @@
+* Setting Up an environment for testing refugue
+
+This is a bit of a delicate matter since it involves global stuff like
+users and their home directories.
+
+There is mechanisms for not using these for users but they are
+advanced features, and we need to test the basic features first before
+we move on to testing these advanced ones.
+
+Here is my notes for setting this up. It should be transferred into a
+'mock' plugin group for testing mock users and such.
+
+** Setting up for testing
+
+First set up a new user on your dev computer.
+
+We use the namespace for general testing of this stuff: ~test~
+followed by the application you are testing ~refugue~ and then
+increment a number at the end for each test.
+
+The invoke tasks should take care of this for you. e.g.
+
+#+begin_src bash
+inv admin.users
+#+end_src
+
+We specify an entire collection of users and passwords at once for
+each test mockup which we can build up and tear down easily.
+
+#+begin_src toml
+
+  username_prefix = "test-refugue_"
+
+  [[users]]
+
+  id = "00"
+  password = "Vae7Quae"
+  groups = []
+
+  [[users]]
+
+  id = "01"
+  password = "Rie9vaiX"
+  groups = []
+#+end_src
+
+The ~id~ for each user will be appended to the ~username_prefix~ at
+creation time.
+
+You can generate a password for it with ~pwgen~:
+
+#+begin_src bash
+pwgen 8 1
+#+end_src
+
+Since some systems I am testing on will require some sort of 'real'
+password.
+
+
