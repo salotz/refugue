@@ -12,48 +12,106 @@ Here is my notes for setting this up. It should be transferred into a
 
 ** Setting up for testing
 
-First set up a new user on your dev computer.
-
-We use the namespace for general testing of this stuff: ~test~
-followed by the application you are testing ~refugue~ and then
-increment a number at the end for each test.
-
-The invoke tasks should take care of this for you. e.g.
+Quickstart:
 
 #+begin_src bash
-inv admin.users
+inv --prompt-for-sudo-password admin.setup
 #+end_src
 
-We specify an entire collection of users and passwords at once for
-each test mockup which we can build up and tear down easily.
+*** Full Description
 
-#+begin_src toml
+We will be making a set of new users that will be able to install the
+in-development refugue code, so we will need a group to include all of
+these users which will be called ~refugue-test~.
 
-  username_prefix = "test-refugue_"
+To double check all the members are in it:
 
-  [[users]]
-
-  id = "00"
-  password = "Vae7Quae"
-  groups = []
-
-  [[users]]
-
-  id = "01"
-  password = "Rie9vaiX"
-  groups = []
+#+begin_src bash
+members refugue-test
 #+end_src
 
-The ~id~ for each user will be appended to the ~username_prefix~ at
-creation time.
+Which must be installed ~sudo apt install members~.
 
-You can generate a password for it with ~pwgen~:
+So first we create and add the current user to the groups specified in
+the config:
+
+#+begin_src bash
+inv --prompt-for-sudo-password admin.add-curr-user-groups
+#+end_src
+
+Now we can configure the repo directory so that the groups have access
+to them. This is needed for other temporary users to be able to
+install it editably:
+
+#+begin_src bash
+inv --prompt-for-sudo-password chown-repo
+#+end_src
+
+
+There are some invoke targets that read a spec for a set of users and
+create them automatically for you:
+
+#+begin_src bash
+inv --prompt-for-sudo-password admin.users
+#+end_src
+
+This reads the ~users.toml~ file based on the config option:
+~DEFAULT_USER_SPEC~.
+
+You can generate a password for them with ~pwgen~:
 
 #+begin_src bash
 pwgen 8 1
 #+end_src
 
-Since some systems I am testing on will require some sort of 'real'
-password.
+You can also make a ~skel~ template dir for it as well, based on the
+~SKEL_DIR~ configuration option.
 
+Run the other commands to clean up after yourself etc.
+
+#+begin_src bash
+inv admin.clean
+#+end_src
+
+
+** Configuring the ~refugue~ network
+
+After you have set up a clean set of users for the testing you need to
+configure the ~refugue~ network.
+
+This is in the ~skel/.config/refugue/config.py~ file which will be copied to
+a new users directory for easy out of the box configuration.
+
+Right now our tests include real hardware for:
+
+- local thumb drive :: ~boxwood~
+- VPS server host :: ~junco~ at domain ~junco.salotz.info~
+- local host :: ~ostrich~
+
+# TODO: get an attached drive to another computer, maybe raspberry pi
+# or laptop
+
+** Running tests
+
+As of now I don't have automated tests since there is already a lot of
+semi-manual and host-specific configuration that needs done as
+described above.
+
+So for now in the early stages just go ahead and log in as a user and
+activate the dev environment.
+
+#+begin_src bash
+su refugue-test_00 # Vae7Quae
+source _venv/dev/bin/activate
+cd $HOME
+#+end_src
+
+#+begin_src bash
+  refugue \
+      --transport rsync \
+      --protocol one-way-sync \
+      --source ostrich --target boxwood
+#+end_src
+
+etc.
 

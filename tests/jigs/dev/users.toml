@@ -3,12 +3,13 @@ username_prefix = 'refugue-test_'
 groups = [
        'refugue-test'
 ]
+dev_group = 'refugue-test'
 default_comment = "For testing refugue package"
 
 [[users]]
 
 id = "00"
-comment = "Test"
+comment = "Test User"
 password = 'Vae7Quae'
 shell = '/bin/bash'
 groups = [
