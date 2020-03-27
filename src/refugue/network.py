@@ -183,10 +183,24 @@ class Network():
         )
         return conn
 
-    def resolve_peer_context(self,
-                             local_cx,
-                             peer,
+    def resolve_peer_connection(self,
+                                peer,
     ):
+        """Get the spec for creating a connection spec (not a full context).
+
+        Parameters
+        ----------
+
+        peer : Peer
+
+        Returns
+        -------
+
+        conn_spec : dict or None
+            If a dict should be able to make a Connection from it. If
+            None it is a local context.
+
+        """
 
         # HOST peers can be across a network and found via a Connection
         if peer.peer_type == PeerTypes.host:
@@ -204,31 +218,62 @@ class Network():
             else:
                 peer_node_aliases = [peer.name]
 
-            # if the peer is this node we choose the local_context as the
-            # peer context
+            # if we are on one of the recognized host node names its a
+            # local context
             if platform.node() in peer_node_aliases:
-                peer_cx = local_cx
+                peer_conn = None
 
-            # otherwise we get the connection spec for this peer and
-            # generate a Connection object for it
+            # otherwise we get the connection spec for this peer
             else:
 
-                # TODO: special error messages for connections that can't be made
-                peer_cx = self.construct_connection(
-                    self.network_config['CONNECTIONS'][peer.name])
+                peer_conn = self.network_config['CONNECTIONS'][peer.name]
 
         # DRIVE peers are assumed to be mounted on the local host node
         # peer
         elif peer.peer_type == PeerTypes.drive:
 
-            # the context is always the local one
-            peer_cx = local_cx
+            # IDEA: Here we would do peer discovery for remote drives
+            # when this is supported
 
+            # the context is always the local one
+            peer_conn = None
 
         elif peer.peer_type is None:
             raise ValueError(f"Unknown peer type {peer.peer_type} for peer {peer}")
         else:
             raise ValueError(f"Unknown peer type {peer.peer_type} for peer {peer}")
+
+        return peer_conn
+
+
+    def resolve_peer_context(self,
+                             local_cx,
+                             peer,
+    ):
+        """Get a execution context for a peer relative to the local context.
+
+        Parameters
+        ----------
+
+        local_cx : Context
+
+        peer : Peer
+
+        Returns
+        -------
+
+        context : Context subclass
+
+        """
+
+        peer_conn = self.resolve_peer_connection(peer)
+
+        if peer_conn is None:
+            peer_cx = local_cx
+
+        # assume it is a valid connection spec
+        else:
+            peer_cx = self.construct_connection(peer_conn)
 
         return peer_cx
 

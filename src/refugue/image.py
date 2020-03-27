@@ -18,6 +18,10 @@ from .network import (
     Network,
     Peer,
 )
+from .sync import (
+    SyncProtocol,
+    SyncSpec,
+)
 
 __all__ = [
     'WorkingSet',
@@ -239,22 +243,6 @@ class Replica():
 
         return replicas
 
-    # TODO
-    def resolve_url(self, cx):
-
-        raise NotImplementedError
-
-        return url
-
-    # TODO
-    def get_context(self):
-        """Get an invoke context or fabric connection for the replica."""
-
-        raise NotImplementedError
-
-        return self_cx
-
-
 @dc.dataclass
 class Image():
     """Represents an image distributed across a set of replicas"""
@@ -318,9 +306,9 @@ class Image():
 
                 return replica
 
-    def resolve_replica(self,
-                        local_cx,
-                        replica,
+    def resolve_replica_path(self,
+                             local_cx,
+                             replica,
     ):
 
         replica_cx = self.network.resolve_peer_context(local_cx, replica.peer)
@@ -342,33 +330,56 @@ class Image():
         # by using the replica's context
         replica_path = replica_cx.run(f'echo "{replica_path}"', hide='out').stdout.strip()
 
-        return replica_cx, replica_path
-
-
+        return replica_path
 
     def pair(self,
              local_cx,
+             sync_spec,
              src,
              target,
     ):
+        """Make a sync pair from two replicas and a sync spec."""
 
         src_replica = self.get_replica(src)
         target_replica = self.get_replica(target)
 
-        # get contexts (either Context or fabric Connection objects)
-        # for each replica
-        src_ctx, src_replica_path = self.resolve_replica(local_cx, src_replica)
-        target_ctx, target_replica_path = self.resolve_replica(local_cx, target_replica)
-
-        print(src_replica_path)
-        print(target_replica_path)
-
-        raise NotImplementedError
-
         sync_pair = SyncPair(
+            image = self,
             src = src_replica,
-            target = target_replica
+            target = target_replica,
+            sync_spec = sync_spec,
         )
+
         return sync_pair
 
 
+@dc.dataclass
+class SyncPair():
+
+    image: Image
+    src: Replica
+    target: Replica
+    sync_spec: SyncSpec
+
+    def sync(self,
+             local_cx: Context,
+             sync_protocol: SyncProtocol,
+    ):
+        """Perform the sync specified by this SyncPair choosing a protocol to
+        do it over, e.g. rsync"""
+
+        # generate the function
+        sync_func = sync_protocol.gen_sync_func(
+            local_cx,
+            self.image,
+            self.src,
+            self.target,
+            self.sync_spec,
+        )
+
+        # get the source context from the network
+        src_cx = self.image.network.resolve_peer_context(local_cx, self.src.peer)
+
+        # DEBUG
+        # and run from the source context
+        # sync_func(src_cx)

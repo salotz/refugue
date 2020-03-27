@@ -8,7 +8,12 @@ from invoke import Context
 
 from .network import Network
 from .image import Image
-from .sync import SyncPair
+from .sync import (
+    SyncPolicy,
+    TransportPolicy,
+    SyncSpec,
+)
+from .protocols.rsync import RsyncProtocol
 
 
 DEFAULT_NETWORK_PATH = "$HOME/.config/refugue/network.config.py"
@@ -38,6 +43,9 @@ IMAGE_CONFIG_KEYS = (
 )
 
 
+_PROTOCOL_MAPS = (
+    ('rsync', RsyncProtocol),
+)
 
 def read_network_config(config_path):
     """Read a python code config file for a network spec and strip out
@@ -69,7 +77,7 @@ def read_image_config(config_path):
 @click.option("--network", type=click.Path(exists=True), default=None)
 @click.option("--image", type=click.Path(exists=True), default=None)
 @click.option("--transport", default=None)
-@click.option("--protocol", default=None)
+@click.option("--protocol", default='rsync')
 @click.argument("src")
 @click.argument("target")
 def cli(network, image, transport, protocol, src, target):
@@ -100,6 +108,25 @@ def cli(network, image, transport, protocol, src, target):
     # the replicas
     image = Image.from_config(image_config_d, network)
 
+    ## Generate the SyncSpec from transport and sync policies
+
+    # STUB: for now we just have this static for testing
+    sync_pol = SyncPolicy(
+        dry = True,
+        safe = True,
+        ow_sync = False,
+        clean = False,
+        force = False,
+    )
+    transport_pol = TransportPolicy(
+        compress = False,
+        encrypt = False,
+    )
+    sync_spec = SyncSpec(
+        sync_pol = sync_pol,
+        transport_pol = transport_pol,
+    )
+
     ## Sync Protocol
 
     # The local execution context
@@ -109,11 +136,10 @@ def cli(network, image, transport, protocol, src, target):
     # topology, validate connection viability, and reify
     sync_pair = image.pair(
         local_cx,
+        sync_spec,
         src,
         target,
     )
-
-    raise NotImplementedError
 
     ## Transport and Execution
 
