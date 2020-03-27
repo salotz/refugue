@@ -1,83 +1,24 @@
-### Configuration
+IMAGE_NAME = "tree"
 
-ROOT_NAME = 'tree'
-
-DRIVES = [
-    'boxwood',
-]
-
-HOSTS = [
-    'ostrich',
-    'junco'
-]
-
-HOST_NODE_ALIASES = {}
-
-PEER_ALIASES = {}
-
-PEER_TYPES = {
-    'hosts' : HOSTS,
-    'drives' : DRIVES,
-}
-
-PEERS = DRIVES + HOSTS + list(PEER_ALIASES.keys())
-
-PEER_MOUNT_PREFIX_TYPES = {
-    ('drive', 'host') : '/media/$USER',
-    ('host', 'host') : '/home/$USER/hosts',
-    ('host', 'hw') : None,
-}
-
-PEER_MOUNTS = {
-    # ('honeysuckle', 'superior') : '$HOME/scratch/mount_drives',
-}
-
-MISC_CONNECTIONS = {}
-
-HOST_CONNECTIONS = {
-
-    'junco' : {
-        'host' : 'junco.salotz.info',
-        'user' : 'salotz',
-    },
-
-}
-
-CONNECTIONS = {**HOST_CONNECTIONS, **MISC_CONNECTIONS}
-
-DEFAULT_PEER_TYPE_REFINEMENTS = {
-    'host' : 'home',
-    'drive' : 'user',
-}
-
-DEFAULT_PEER_REFINEMENTS = {
-
-}
-
-REPLICAS = PEERS + [
+REPLICAS = [
+    'ostrich/tree',
     'ostrich/scratch',
     'ostrich/dummy',
-]
 
-REFINEMENT_REPLICA_PREFIXES = {
-    # TODO: make this portable somehow so we are querying the target
-    # system
-    'home' : "$HOME",
-    'user' : "$USER",
-    'root' : '',
-    'scratch' : "$SCRATCH",
-}
+    'junco/tree',
+    'boxwood/tree',
+]
 
 REPLICA_PREFIXES = {
 
-    'ostrich' : '$HOME/tree',
+    'ostrich/tree' : '$HOME/tree',
     'ostrich/scratch' : '$HOME/scratch/tree',
     'ostrich/dummy' : '$HOME/scratch/dummy_refugue',
 
-    'junco' : '$HOME/tree'
+    'junco/tree' : '$HOME/tree',
 
     # drives
-    'boxwood' : '$USER/tree',
+    'boxwood/tree' : '$USER/tree',
 
 }
 
@@ -102,7 +43,7 @@ ALL_EXCLUDES = DOMAINS + BASKETS
 
 REPLICA_EXCLUDES = {
 
-    'ostrich' : (
+    'ostrich/tree' : (
         [
             # TODO
 
@@ -135,7 +76,7 @@ REPLICA_EXCLUDES = {
          BACKUP_EXCLUDES)
     ),
 
-    'junco' : (
+    'junco/tree' : (
         [
             # TODO
         ] +
@@ -145,7 +86,7 @@ REPLICA_EXCLUDES = {
     ),
 
     # drives
-    'boxwood' : (
+    'boxwood/tree' : (
         [
             # TODO
         ] +
@@ -157,12 +98,12 @@ REPLICA_EXCLUDES = {
 
 REPLICA_INCLUDES = {
 
-    'ostrich' : [],
+    'ostrich/tree' : [],
     'ostrich/scratch' : [],
     'ostrich/dummy' : [],
 
-    'junco' : [],
+    'junco/tree' : [],
 
-    'boxwood' : [],
+    'boxwood/tree' : [],
 
 }

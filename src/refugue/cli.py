@@ -3,27 +3,23 @@ import os.path as osp
 from pathlib import Path
 import runpy
 
-from invoke import Context
 import click
-import fabric
+from invoke import Context
 
-from .main import (
-    Network,
-    Replica,
-    SyncPair,
-)
-
-import refugue.config as config
+from .network import Network
+from .image import Image
+from .sync import SyncPair
 
 
-# _PROTOCOL_MAPS = (
-#     ('rsync', RsyncProtocol),
-# )
+DEFAULT_NETWORK_PATH = "$HOME/.config/refugue/network.config.py"
 
+IMAGE_CONFIG_DIR = "$HOME/.config/refugue/images"
+"""Location where image configs are expected"""
 
-DEFAULT_CONFIG_PATH = "$HOME/.config/refugue/config.py"
+DEFAULT_IMAGE_CONF_NAME = "default.image.config.py"
+"""Default image conf file to read"""
 
-CONFIG_KEYS = (
+NETWORK_CONFIG_KEYS = (
     "HOSTS",
     "DRIVES",
     "PEER_ALIASES",
@@ -31,57 +27,87 @@ CONFIG_KEYS = (
     "PEER_TYPES",
     "PEERS",
     "PEER_MOUNT_PREFIX_TYPES",
-    "PEER_MOUNTS",
     "CONNECTIONS",
-    "DEFAULT_PEER_TYPE_REFINEMENTS",
-    "DEFAULT_PEER_REFINEMENTS",
+)
+
+IMAGE_CONFIG_KEYS = (
     "REPLICAS",
-    "REFINEMENT_REPLICA_PREFIXES",
     "REPLICA_PREFIXES",
     "REPLICA_EXCLUDES",
     "REPLICA_INCLUDES",
 )
 
-def read_config(config_path):
-    """Read a python code config file and strip out only the recognized
-    variables"""
+
+
+def read_network_config(config_path):
+    """Read a python code config file for a network spec and strip out
+    only the recognized variables
+
+    """
 
     config_all = runpy.run_path(str(config_path))
 
     config = {key : value for key, value in config_all.items()
-              if key in CONFIG_KEYS}
+              if key in NETWORK_CONFIG_KEYS}
+
+    return config
+
+def read_image_config(config_path):
+    """Read a python code config file for an image spec and strip out only
+    the recognized variables
+
+    """
+
+    config_all = runpy.run_path(str(config_path))
+
+    config = {key : value for key, value in config_all.items()
+              if key in IMAGE_CONFIG_KEYS}
 
     return config
 
 @click.command()
-@click.option("--config", type=click.Path(exists=True), default=None)
-@click.option("--sync-file", type=click.Path(exists=True), default=None)
-@click.option("--sync", default=None)
+@click.option("--network", type=click.Path(exists=True), default=None)
+@click.option("--image", type=click.Path(exists=True), default=None)
 @click.option("--transport", default=None)
 @click.option("--protocol", default=None)
 @click.argument("src")
 @click.argument("target")
-def cli(config, sync_file, sync, transport, protocol, src, target):
+def cli(network, image, transport, protocol, src, target):
 
-    if config is None:
-        config = DEFAULT_CONFIG_PATH
+    ## Load the config files
 
-    # TODO: validate options
+    if network is None:
+        network = DEFAULT_NETWORK_PATH
 
-    # expand shell variables to the config file
-    config_path = Path(osp.expanduser(osp.expandvars(config)))
+    if image is None:
+        image = Path(IMAGE_CONFIG_DIR) / DEFAULT_IMAGE_CONF_NAME
 
-    config_d = read_config(config_path)
+    # expand shell variables to the config files
+    network_path = Path(osp.expanduser(osp.expandvars(network)))
+    image_path = Path(osp.expanduser(osp.expandvars(image)))
 
-    # conjure up a local invoke context to run from
-    local_cx = Context()
+    network_config_d = read_network_config(network_path)
+    image_config_d = read_image_config(image_path)
+
+    ## Network
 
     # build the network from the configuration file
-    network = Network.from_config(config_d)
+    network = Network.from_config(network_config_d)
+
+    ## Image & Replicas
+
+    # then embed it into the Image along with the image spec with all
+    # the replicas
+    image = Image.from_config(image_config_d, network)
+
+    ## Sync Protocol
+
+    # The local execution context
+    local_cx = Context()
 
     # identify the replicas in the network, discover current network
     # topology, validate connection viability, and reify
-    sync_pair = network.pair(
+    sync_pair = image.pair(
         local_cx,
         src,
         target,
@@ -89,6 +115,7 @@ def cli(config, sync_file, sync, transport, protocol, src, target):
 
     raise NotImplementedError
 
+    ## Transport and Execution
 
     # choose protocol
     sync_protocol = dict(_PROTOCOL_MAPS)[protocol]
