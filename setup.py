@@ -21,6 +21,7 @@ base_requirements = [
     'invoke',
     'click',
     'fabric',
+    'toml',
     'py_rsync',
 ]
 

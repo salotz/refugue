@@ -93,3 +93,40 @@ REPLICA_INCLUDES = {
     'boxwood/tree' : [],
 
 }
+
+
+## Pairings
+
+# define the options for syncing between pairs of the replicas
+
+DEFAULT_PAIR_OPTIONS = {
+    'sync' : {
+         'inject' : False,
+         'clobber' : False,
+         'clean' : True,
+         'prune' : False,
+    },
+
+    'transport' : {
+        'backup' : 'rename',
+        'compression' : 'auto',
+        'encryption' : None,
+    },
+}
+
+PAIR_OPTIONS = {
+    ('ostrich/tree', 'boxwood/tree', '<-->') : {
+        'sync' : {
+            'inject' : False,
+            'clobber' : False,
+            'clean' : True,
+            'prune' : True,
+        },
+
+        'transport' : {
+            'backup' : 'rename',
+            'compression' : 'auto',
+            'encryption' : None,
+        },
+    },
+}

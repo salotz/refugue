@@ -35,21 +35,21 @@ class SyncPolicy():
 
     """
 
-    # WIP: this is very WIP and based on my previous stuff with rsync
-    # do not consider stable at all
-    dry: bool
-    safe: bool
-    ow_sync: bool
+    inject: bool
+    clobber: bool
     clean: bool
-    force: bool
+    prune: bool
 
 @dc.dataclass
 class TransportPolicy():
     """Policy regarding details about how a transport should take place
     including encryption and compression."""
 
-    compress: bool
-    encrypt: bool
+    compression: Optional[str]
+    encryption: Optional[str]
+    dry: bool
+    backup: Optional[str]
+    create: Optional[str]
 
 @dc.dataclass
 class SyncSpec():

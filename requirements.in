@@ -3,4 +3,5 @@
 invoke
 click
 fabric
+toml
 py_rsync

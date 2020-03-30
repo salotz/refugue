@@ -37,21 +37,92 @@ class RsyncProtocol(SyncProtocol):
     @classmethod
     def _compile_rsync_options(cls,
                                sync_spec: SyncSpec,
+                               src,
+                               target,
     ):
         """Given the high level specification of intended behavior compile the
         appropriate options for rsync."""
 
 
-        # TODO: read spec
+        # info
+        # info_options = rsync.InfoOptions(
+        #     flags=(),
+        # )
+        info_options = None
 
-        info_options = rsync.InfoOptions(
-            flags=(),
-        )
+        # the key-value options
+        opts = {}
+
+        # includes
+        if len(src.wset.includes) > 0:
+            includes = sec.wset.includes
+        else:
+            includes = ()
+
+        # excludes
+        if len(src.wset.excludes) > 0:
+            excludes = sec.wset.excludes
+        else:
+            excludes = ()
+
+        # policy options
+        sync = sync_spec.sync_pol
+        transport = sync_spec.transport_pol
+
+        # collect which flags to use
+
+        # always use these ones
+        opt_flags = [
+            'archive',
+            'verbose',
+            'human-readable',
+            'itemize-changes',
+            'stats',
+        ]
+
+        # for rsync the transport policy and syncrhonization policy
+        # just correspond to different options
+
+        ## Transport
+        if transport.dry:
+            opt_flags.append('dry-run')
+
+        if transport.compression == 'rsync':
+            opt_flags.append('compress')
+
+        if transport.backup == 'rename':
+            opt_flags.append('backup')
+            opts['suffix'] = '.refugue-backup'
+
+        # TODO: need to get the backup dir from the config..
+        # elif transport.backup == 'refile':
+        #     opt_flags.append('backup')
+        #     opts['backup-dir'] = ''
+
+
+        ## Sync
+
+        # default to always having the 'update' option on and turned
+        # off if we are clobbering
+
+        if not sync.clobber:
+            opt_flags.append('update')
+
+        if sync.inject:
+            opt_flags.append('existing')
+
+        if sync.clean:
+            opt_flags.append('delete')
+
+        if sync.prune:
+            opt_flags.append('delete-excluded')
+
 
         options = rsync.Options(
-            flags=(),
-            includes=(),
-            excludes=(),
+            flags=tuple(opt_flags),
+            kv=opts,
+            includes=includes,
+            excludes=excludes,
             info=info_options,
         )
 
@@ -75,9 +146,7 @@ class RsyncProtocol(SyncProtocol):
             raise ValueError(f"Invalid SyncSpec for this protocol: {self.__name__}")
 
         ## Compile Sync Spec to Options
-
-        # STUB, TODO: for now its just None for testing
-        options = None
+        options = cls._compile_rsync_options(sync_spec, src, target)
 
         ## Generate enpoint URLs
 

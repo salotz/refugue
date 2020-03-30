@@ -5,6 +5,7 @@ import runpy
 
 import click
 from invoke import Context
+import toml
 
 from .network import Network
 from .image import Image
@@ -24,6 +25,14 @@ IMAGE_CONFIG_DIR = "$HOME/.config/refugue/images"
 DEFAULT_IMAGE_CONF_NAME = "default.image.config.py"
 """Default image conf file to read"""
 
+DEFAULT_CONFIG_PATH = "$HOME/.config/refugue/config.toml"
+"""Default path for the configuration file that configures the
+behavior of the refugue tool."""
+
+
+DEFAULT_BACKUP_DIR = "$HOME/.local/share/refugue/backups"
+"""Default location for refile backups to be placed."""
+
 NETWORK_CONFIG_KEYS = (
     "HOSTS",
     "DRIVES",
@@ -40,12 +49,66 @@ IMAGE_CONFIG_KEYS = (
     "REPLICA_PREFIXES",
     "REPLICA_EXCLUDES",
     "REPLICA_INCLUDES",
+    "DEFAULT_PAIR_OPTIONS",
+    "PAIR_OPTIONS",
+)
+
+SYNC_OPTIONS = (
+    ('i', 'inject',),
+    ('k', 'clobber',),
+    ('c', 'clean',),
+    ('p', 'prune',),
+)
+
+DEFAULT_SYNC_OPTIONS = (
+    ('inject', False),
+    ('clobber', False),
+    ('clean', True),
+    ('prune', False),
+)
+
+DEFAULT_TRANSPORT_OPTIONS = (
+    ('backup', 'rename'),
+    ('compression', 'auto'),
+    ('encryption', None),
+    ('create', True),
 )
 
 
-_PROTOCOL_MAPS = (
-    ('rsync', RsyncProtocol),
+BACKUP_METHODS = (
+    # don't backup
+    None,
+
+    # backup by renaming the file with a refugue specific suffix:
+    # '*.refugue-backup'
+    'rename',
+
+    # move to the configured backup refiling location, default:
+    # '$HOME/.local/share/refugue/backups/YYY-MM-DD:min-sec'
+    # TODO: implement
+    # 'refile',
 )
+
+COMPRESSION_METHODS = (
+    None,
+    # choose based on whether it is between two hosts that are remote
+    # to each other using the default mechanism
+    'auto',
+
+    # default 'on' method
+    'rsync',
+
+    # TODO
+    # 'blosc',
+    # 'bzip2',
+    # 'zlib',
+)
+
+ENVRYPTION_METHODS = (
+    None,
+    # TODO
+)
+
 
 def read_network_config(config_path):
     """Read a python code config file for a network spec and strip out
@@ -72,7 +135,6 @@ def read_image_config(config_path):
               if key in IMAGE_CONFIG_KEYS}
 
     return config
-
 
 from invoke.vendor.six.moves import input
 
@@ -121,17 +183,57 @@ def confirm(question, assume_yes=True):
 
 
 @click.command()
-@click.option("--network", type=click.Path(exists=True), default=None)
-@click.option("--image", type=click.Path(exists=True), default=None)
-@click.option("--transport", default=None)
-@click.option("--protocol", default='rsync')
-@click.option("--create", is_flag=True, default=True, help="Create the target if doesn't exist")
-@click.option("--yes", '-y', is_flag=True, default=False)
+@click.option("--network",
+              type=click.Path(exists=True),
+              default=None,
+              help="Network specification file to use.")
+@click.option("--image",
+              type=click.Path(exists=True),
+              default=None,
+              help="Image specification file to use.")
+@click.option("--sync",
+              default=None,
+              help="Comma separated list of sync policy flags to use or None, "
+              "overrides default from image config, "
+              "e.g. 'clobber,clean,prune' or 'k,c,p'. "
+              "Default='clean'")
+@click.option("--dry",
+              is_flag=True,
+              default=False,
+              help="Run as a dry run if the transport protocol supports it")
+@click.option("--create",
+              is_flag=True,
+              default=True,
+              help="Create the target if doesn't exist")
+@click.option("--backup",
+              default='rename',
+              help="Choose a backup method: None or 'rename'")
+@click.option("--compression",
+              default=None,
+              help="Choose a compression method: None, 'auto', 'rsync'")
+@click.option("--encryption",
+              default=None,
+              help="Choose an encryption method: None")
+@click.option("--yes",
+              '-y',
+              is_flag=True,
+              default=False,
+              help="Don't ask for confirmation")
 @click.argument("src")
 @click.argument("target")
-def cli(network, image, transport, protocol, create, yes, src, target):
+def cli(
+        # file-based specifications
+        network, image,
+        # sync spec overrides from image
+        sync,
+        # transport options
+        dry, create, backup, compression, encryption,
+        # other CLI options
+        yes,
+        # the alpha and beta pair
+        src, target):
 
-    ## Load the config files
+    ### Load the config files
 
     if network is None:
         network = DEFAULT_NETWORK_PATH
@@ -146,31 +248,109 @@ def cli(network, image, transport, protocol, create, yes, src, target):
     network_config_d = read_network_config(network_path)
     image_config_d = read_image_config(image_path)
 
-    ## Network
+    ### Network
 
     # build the network from the configuration file
     network = Network.from_config(network_config_d)
 
-    ## Image & Replicas
+    ### Image & Replicas
 
     # then embed it into the Image along with the image spec with all
     # the replicas
     image = Image.from_config(image_config_d, network)
 
-    ## Generate the SyncSpec from transport and sync policies
+    ### Generate the SyncSpec from transport and sync policies
 
-    # STUB: for now we just have this static for testing
-    sync_pol = SyncPolicy(
-        dry = True,
-        safe = True,
-        ow_sync = False,
-        clean = False,
-        force = False,
-    )
-    transport_pol = TransportPolicy(
-        compress = False,
-        encrypt = False,
-    )
+    ## sync options
+
+    # if command line sync was given use that
+    if sync is not None:
+
+        # the possible names
+        sync_names = [opt for _, opt in SYNC_OPTIONS]
+        sync_abbrevs = [opt for abbrev, _ in SYNC_OPTIONS]
+
+        # initialize
+        sync_spec = {opt : False for opt in sync_names}
+
+        # parse
+        sync_opts = sync.strip().split(',')
+
+        # turn them on that are given in the string
+        for opt in sync_opts:
+
+            # get the full name if necessary
+            if opt in sync_abbrevs:
+                opt = sync_names[sync_abbrevs.index(opt)]
+
+            sync_spec[opt] = True
+
+    # otherwise we want to load from the image config the pairs if
+    # given, and if not using the safe deafult
+    else:
+
+        # start with the default
+        sync_spec = dict(DEFAULT_SYNC_OPTIONS)
+
+        # use the default from the config file
+        if 'DEFAULT_PAIR_OPTIONS' in image_config_d:
+            sync_spec.update(image_config_d['DEFAULT_PAIR_OPTIONS']['sync'])
+
+        # then update with the options in the specific pairing
+
+        # choose which pairing keys to try given the src and target
+        pairing_keys = [
+            (src, target, '-->'),
+            (src, target, '<-->'),
+            (target, src, '<-->'),
+        ]
+
+        for key in pairing_keys:
+            if key in image_config_d['PAIR_OPTIONS']:
+                pair_spec = image_config_d['PAIR_OPTIONS'][key]
+                sync_spec.update(image_config_d['PAIR_OPTIONS'][key]['sync'])
+                break
+
+    ## Transport
+
+
+    transport_spec = dict(DEFAULT_TRANSPORT_OPTIONS)
+
+    # use the default from the config file
+    if 'DEFAULT_PAIR_OPTIONS' in image_config_d:
+        transport_spec.update(image_config_d['DEFAULT_PAIR_OPTIONS']['transport'])
+
+    # then update with the options in the specific pairing
+
+    # choose which pairing keys to try given the src and target
+    pairing_keys = [
+        (src, target, '-->'),
+        (src, target, '<-->'),
+        (target, src, '<-->'),
+    ]
+
+    for key in pairing_keys:
+        if key in image_config_d['PAIR_OPTIONS']:
+            pair_spec = image_config_d['PAIR_OPTIONS'][key]
+            transport_spec.update(image_config_d['PAIR_OPTIONS'][key]['transport'])
+            break
+
+    # finally override with command line options
+    cli_transport_spec = {
+        'dry' : dry,
+        'create' : create,
+        'backup' : backup,
+        'compression' : compression,
+        'encryption' : encryption,
+    }
+
+    transport_spec.update(cli_transport_spec)
+
+    # create them
+    sync_pol = SyncPolicy(**sync_spec)
+
+    transport_pol = TransportPolicy(**transport_spec)
+
     sync_spec = SyncSpec(
         sync_pol = sync_pol,
         transport_pol = transport_pol,
@@ -190,10 +370,10 @@ def cli(network, image, transport, protocol, create, yes, src, target):
         target,
     )
 
-    ## Transport and Execution
+    ### Execution
 
-    # choose protocol
-    sync_protocol = dict(_PROTOCOL_MAPS)[protocol]
+    # STUB: choose protocol, its always rsync now
+    sync_protocol = RsyncProtocol
 
     # get the context and function to execute
     ex_cx, sync_func, confirm_message = sync_pair.sync(
@@ -219,12 +399,14 @@ def cli(network, image, transport, protocol, create, yes, src, target):
         create_command = f"mkdir -p {target_replica_path}"
 
     # confirm this is okay to run
-    print("The generated command:\n")
+    print("The generated command:")
+    print("--------------------------------------------------------------------------------")
 
     if create:
         print(create_command)
 
     print(confirm_message)
+    print("--------------------------------------------------------------------------------")
 
     # get confirmation if not already
     if not yes:
@@ -236,8 +418,12 @@ def cli(network, image, transport, protocol, create, yes, src, target):
     if yes:
 
         print(f"Running command on host: '{sync_pair.src.peer.name}' via connection: '{src_conn}'")
+        print("Command Output:")
+        print("--------------------------------------------------------------------------------")
         ex_cx.run(create_command)
         sync_func(ex_cx)
+        print("--------------------------------------------------------------------------------")
+        print("Refugue says: Synchronization Finished")
 
     else:
         print("Command Cancelled")
