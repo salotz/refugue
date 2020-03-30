@@ -369,7 +369,7 @@ class SyncPair():
         do it over, e.g. rsync"""
 
         # generate the function
-        sync_func = sync_protocol.gen_sync_func(
+        sync_func, confirm_message = sync_protocol.gen_sync_func(
             local_cx,
             self.image,
             self.src,
@@ -380,6 +380,5 @@ class SyncPair():
         # get the source context from the network
         src_cx = self.image.network.resolve_peer_context(local_cx, self.src.peer)
 
-        # DEBUG
-        # and run from the source context
-        # sync_func(src_cx)
+        # return them
+        return src_cx, sync_func, confirm_message

@@ -103,9 +103,10 @@ def rm_curr_user_groups(cx, spec=DEFAULT_USER_SPEC):
     # make the groups spec string, by removing the groups in the spec
     groups = cx.run("id -nG $USER").stdout.strip().split(" ")
     for group in spec['groups']:
-        groups.remove(group)
+        if group in groups:
+            groups.remove(group)
 
-    groups = ' '.join(groups)
+    groups = ','.join(groups)
 
     print(f"New group spec for user: {groups}")
     cx.sudo(f"usermod -G {groups} $USER")
@@ -128,6 +129,50 @@ def unchown_repo(cx, spec=DEFAULT_USER_SPEC):
     spec = toml.load(spec)
 
     cx.sudo(f"chown :$USER -R .")
+
+@task
+def chown_drives(cx, spec=DEFAULT_USER_SPEC):
+    """Give dev group access to the test drives."""
+
+    spec = toml.load(spec)
+
+    for drive in spec['drives']:
+
+        # group ownership of the drive with read execute permissions
+        cx.sudo(f"chown salotz:{spec['dev_group']} /media/salotz/{drive}")
+        cx.sudo(f"chmod g+rwx /media/salotz/{drive}")
+
+
+        for user in spec['users']:
+            username = spec['username_prefix'] + user['id']
+
+            # make a dir in it for this user
+            cx.run(f"mkdir -p /media/salotz/{drive}/{username}")
+
+
+            # user ownership of the folder
+            cx.sudo(f"chown {username}:{spec['dev_group']} -R /media/salotz/{drive}/{username}")
+
+            # allow execute access to the main folder
+            cx.sudo(f"chmod -R ug+rwx /media/salotz/{drive}/{username}")
+
+@task
+def unchown_drives(cx, spec=DEFAULT_USER_SPEC):
+    """Give dev group access to the test drives."""
+
+    spec = toml.load(spec)
+
+    for drive in spec['drives']:
+
+        for user in spec['users']:
+            username = spec['username_prefix'] + user['id']
+
+            # make a dir in it for this user
+            cx.sudo(f"rm -rf /media/salotz/{drive}/{username}")
+
+            # group ownership of the folder
+            cx.sudo(f"chown salotz:salotz /media/salotz/{drive}")
+            cx.sudo(f"chmod go-rwx /media/salotz/{drive}")
 
 @task(pre=[clean_users])
 def users(cx, spec=DEFAULT_USER_SPEC):
@@ -200,6 +245,8 @@ tasks = [
     rm_curr_user_groups,
     chown_repo,
     unchown_repo,
+    chown_drives,
+    unchown_drives,
     setup,
     clean,
 ]

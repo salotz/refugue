@@ -1,5 +1,8 @@
 * Setting Up an environment for testing refugue
 
+THIS IS REALLY ANNOYING I DON'T NEED IT ANYMORE SINCE I CAN CHOOSE THE
+PATH TO USE.
+
 This is a bit of a delicate matter since it involves global stuff like
 users and their home directories.
 
@@ -107,10 +110,7 @@ cd $HOME
 #+end_src
 
 #+begin_src bash
-  refugue \
-      --transport rsync \
-      --protocol one-way-sync \
-      --source ostrich --target boxwood
+refugue -y ostrich/tree boxwood/tree
 #+end_src
 
 etc.

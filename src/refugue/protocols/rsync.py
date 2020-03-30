@@ -133,12 +133,9 @@ class RsyncProtocol(SyncProtocol):
         # render the command
         command_str = command.render()
 
-        print("The generated command: ")
-        print(command_str)
-
         # return this closure which is the callable that actually
         # executes the sync process
         def _sync_func(src_cx):
             src_cx.run(command_str)
 
-        return _sync_func
+        return _sync_func, command_str

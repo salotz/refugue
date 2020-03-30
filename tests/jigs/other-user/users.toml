@@ -5,6 +5,9 @@ groups = [
 ]
 dev_group = 'refugue-test'
 default_comment = "For testing refugue package"
+drives = [
+       'boxwood'
+]
 
 [[users]]
 
@@ -15,3 +18,4 @@ shell = '/bin/bash'
 groups = [
        'refugue-test',
 ]
+

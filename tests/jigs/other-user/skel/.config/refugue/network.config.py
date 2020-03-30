@@ -25,14 +25,14 @@ PEER_TYPES = {
 PEERS = DRIVES + HOSTS
 
 PEER_MOUNT_PREFIX_TYPES = {
-    ('drive', 'host') : '/media/$USER',
+    ('drive', 'host') : '/media/salotz',
     ('host', 'hw') : None,
 }
 
 # TODO: not supported right now, but it should be
 PEER_MOUNTS = {
     # put special mount points here
-    # ('boxwood', 'ostrich') : '$HOME/scratch/mount_drives',
+    # ('boxwood', 'ostrich') : '/media/salotz',
 }
 
 CONNECTIONS = {

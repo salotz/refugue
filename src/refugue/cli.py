@@ -73,14 +73,63 @@ def read_image_config(config_path):
 
     return config
 
+
+from invoke.vendor.six.moves import input
+
+def confirm(question, assume_yes=True):
+    """
+    Ask user a yes/no question and return their response as a boolean.
+    ``question`` should be a simple, grammatically complete question such as
+    "Do you wish to continue?", and will have a string similar to ``" [Y/n] "``
+    appended automatically. This function will *not* append a question mark for
+    you.
+    By default, when the user presses Enter without typing anything, "yes" is
+    assumed. This can be changed by specifying ``assume_yes=False``.
+    .. note::
+        If the user does not supplies input that is (case-insensitively) equal
+        to "y", "yes", "n" or "no", they will be re-prompted until they do.
+    :param str question: The question part of the prompt.
+    :param bool assume_yes:
+        Whether to assume the affirmative answer by default. Default value:
+        ``True``.
+    :returns: A `bool`.
+    """
+    # Set up suffix
+    if assume_yes:
+        suffix = "Y/n"
+    else:
+        suffix = "y/N"
+    # Loop till we get something we like
+    # TODO: maybe don't do this? It can be annoying. Turn into 'q'-for-quit?
+    while True:
+        # TODO: ensure that this is Ctrl-C friendly, ISTR issues with
+        # raw_input/input on some Python versions blocking KeyboardInterrupt.
+        response = input("{0} [{1}] ".format(question, suffix))
+        response = response.lower().strip()  # Normalize
+        # Default
+        if not response:
+            return assume_yes
+        # Yes
+        if response in ["y", "yes"]:
+            return True
+        # No
+        if response in ["n", "no"]:
+            return False
+        # Didn't get empty, yes or no, so complain and loop
+        err = "I didn't understand you. Please specify '(y)es' or '(n)o'."
+        print(err, file=sys.stderr)
+
+
 @click.command()
 @click.option("--network", type=click.Path(exists=True), default=None)
 @click.option("--image", type=click.Path(exists=True), default=None)
 @click.option("--transport", default=None)
 @click.option("--protocol", default='rsync')
+@click.option("--create", is_flag=True, default=True, help="Create the target if doesn't exist")
+@click.option("--yes", '-y', is_flag=True, default=False)
 @click.argument("src")
 @click.argument("target")
-def cli(network, image, transport, protocol, src, target):
+def cli(network, image, transport, protocol, create, yes, src, target):
 
     ## Load the config files
 
@@ -146,10 +195,53 @@ def cli(network, image, transport, protocol, src, target):
     # choose protocol
     sync_protocol = dict(_PROTOCOL_MAPS)[protocol]
 
-    sync_pair.sync(
+    # get the context and function to execute
+    ex_cx, sync_func, confirm_message = sync_pair.sync(
         local_cx,
         sync_protocol,
     )
+
+    src_conn = image.network.resolve_peer_connection(sync_pair.src.peer)
+
+    if src_conn is None:
+        src_conn = "localhost"
+
+    else:
+        src_conn = f"{src_conn['user']}@{src_conn['host']}"
+
+    # the create command if asked for
+    if create:
+        target_replica_path = image.resolve_replica_path(
+            local_cx,
+            sync_pair.target,
+        )
+
+        create_command = f"mkdir -p {target_replica_path}"
+
+    # confirm this is okay to run
+    print("The generated command:\n")
+
+    if create:
+        print(create_command)
+
+    print(confirm_message)
+
+    # get confirmation if not already
+    if not yes:
+        yes = confirm(
+            f"Run this command on the host: '{sync_pair.src.peer.name}' via '{src_conn}'?",
+            assume_yes=False,
+        )
+
+    if yes:
+
+        print(f"Running command on host: '{sync_pair.src.peer.name}' via connection: '{src_conn}'")
+        ex_cx.run(create_command)
+        sync_func(ex_cx)
+
+    else:
+        print("Command Cancelled")
+
 
 if __name__ == "__main__":
 
