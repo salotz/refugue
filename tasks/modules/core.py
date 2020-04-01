@@ -12,7 +12,7 @@ def sanity(cx):
 
 
 @task
-def pin_deps(cx):
+def pin_tool_deps(cx):
     """Pins or upgrades the requirements.txt for the jubeo tooling from
     the requirements.in (from the upstream repo) and the
     local.requirements.in (for project specific tooling dependencies)
