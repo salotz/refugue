@@ -1,0 +1,15 @@
+{
+    "cookiecutter.project_name" : "refugue",
+    "cookiecutter.project_slug" : "refugue",
+    "cookiecutter.project_description" : "Meta-project Protocol",
+    "cookiecutter.initial_version" : "0.0.0a0.dev0",
+    "cookiecutter.copyright" : "BY-NC",
+    "cookiecutter.license" : "MIT",
+    "cookiecutter.owner_name" : "Samuel D. Lotz",
+    "cookiecutter.owner_email" : "samuel.lotz@salotz.info",
+    "cookiecutter.owner_nickname" : "salotz",
+    "cookiecutter.url" : "https://github.com/salotz/refugue",
+    "cookiecutter.dev_url" : "https://github.com/salotz/refugue",
+    "cookiecutter.doc_url" : "https://salotz.github.io/refugue",
+    "cookiecutter.sdist_url" : "https://github.com/salotz/refugue/releases/download/"
+}

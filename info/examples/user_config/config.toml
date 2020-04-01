@@ -1,0 +1,8 @@
+# configuration file for the refugue tool, set defaults here
+
+backup_dir = "$HOME/.local/share/refugue/backups"
+backup_method = "rename"
+
+backup_rename_suffix = ".refugue-backup"
+
+encryption = 'None'

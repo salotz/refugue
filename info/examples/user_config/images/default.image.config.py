@@ -1,11 +1,9 @@
-# by convention values which are not read by the configuration parser
-# are written in snake_case, those that are in all caps.
-
+# By convention the values read by the config reader are in all caps
+# and the others are in lower case snake_case
 
 REPLICAS = [
     'ostrich/tree',
     'ostrich/scratch',
-    'ostrich/dummy',
 
     'junco/tree',
     'boxwood/tree',
@@ -13,14 +11,13 @@ REPLICAS = [
 
 REPLICA_PREFIXES = {
 
-    'ostrich/tree' : '$HOME/tree',
-    'ostrich/scratch' : '$HOME/scratch/tree',
-    'ostrich/dummy' : '$HOME/scratch/dummy_refugue',
+    'ostrich/tree' : '$HOME/scratch/refugue/tree',
+    'ostrich/scratch' : '$HOME/scratch/refugue/scratch/tree',
 
-    'junco/tree' : '$HOME/tree',
+    'junco/tree' : '$HOME/scratch/refugue/tree',
 
     # drives
-    'boxwood/tree' : '$USER/tree',
+    'boxwood/tree' : '$USER/scratch/refugue/tree',
 
 }
 
@@ -67,17 +64,6 @@ REPLICA_EXCLUDES = {
          backup_excludes)
     ),
 
-    'ostrich/dummy' : (
-        [
-            # TODO
-
-        ] +
-        (VCS_EXCLUDES +
-         CACHE_EXCLUDES +
-         BUILD_EXCLUDES +
-         BACKUP_EXCLUDES)
-    ),
-
     'junco/tree' : (
         [
             # TODO
@@ -102,7 +88,6 @@ REPLICA_INCLUDES = {
 
     'ostrich/tree' : [],
     'ostrich/scratch' : [],
-    'ostrich/dummy' : [],
 
     'junco/tree' : [],
 
@@ -110,3 +95,39 @@ REPLICA_INCLUDES = {
 
 }
 
+
+## Pairings
+
+# define the options for syncing between pairs of the replicas
+
+DEFAULT_PAIR_OPTIONS = {
+    'sync' : {
+         'inject' : False,
+         'clobber' : False,
+         'clean' : True,
+         'prune' : False,
+    },
+
+    'transport' : {
+        'backup' : 'rename',
+        'compression' : 'auto',
+        'encryption' : None,
+    },
+}
+
+PAIR_OPTIONS = {
+    ('ostrich/tree', 'boxwood/tree', '<-->') : {
+        'sync' : {
+            'inject' : False,
+            'clobber' : False,
+            'clean' : True,
+            'prune' : True,
+        },
+
+        'transport' : {
+            'backup' : 'rename',
+            'compression' : 'auto',
+            'encryption' : None,
+        },
+    },
+}

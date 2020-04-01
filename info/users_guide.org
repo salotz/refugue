@@ -1,6 +1,8 @@
 * User's Guide
 
-~refugue~ is about managing unique source trees of files, called
+** Background
+
+~Refugue~ is about managing unique source trees of files, called
 *images* and replicating them around to physical locations, called
 *peers*.
 
@@ -26,7 +28,7 @@ because authority of mapping pet-names lies completely in the
 user/configurer of the ~refugue~ system; i.e. a configuration file.
 
 The policies surrounding the control of the configuration file itself
-are completely up to the refugue user.  It can be in a VCS like ~git~
+are completely up to the ~refugue~ user.  It can be in a VCS like ~git~
 or carried around in a thumb drive needing only small amount of manual
 work to "bootstrap" entry to the private network.
 
@@ -65,7 +67,11 @@ lost data which can then be reincorporated to the live image.
 
 It is the goal of refugue however to provide some facilities for
 synchronization and merge conflicts through customizable protocols
-which we will call *sync-protocols*.
+which we will call *sync policies*.
+
+This is still an active point of "research" for the project and so
+the API will probably be in flux until a major release.
+
 
 *** Implementation
 
@@ -79,16 +85,52 @@ a variety of operating systems and file systems.
 We also would like to keep the underlying transport backends abstract
 and allow for different strategies which are network sensitive to
 allow for efficient transfers as well support a variety of
-*sync-protocols*.
+*sync-policies*.
 
 For now the transfer backend and *sync-protocol* options are what can
 be achieved with ~rsync~ and remote execution is done through the
 ~fabric~ library.
 
+
+** Configuration
+
+~Refugue~ is parametrized by three different varieties of config files
+(*tool-config*, *network-config*, *image-config*) along with a couple
+command line flags.
+
+The tool config is a [[https://github.com/toml-lang/toml][TOML]] format file which configures the behavior of
+the ~refugue~ command line tool and is not necessary.
+
+The other config files are necessary and are important inputs to the
+program. Without them ~refugue~ can't really do anything.
+
+If either of the network or image config files are not provided to the
+command then they will attempted to be read from the configuration
+directory (~$HOME/.config/refugue~).
+
+The *network-config* is read from
+~$HOME/.config/refugue/network.config.py~.
+
+And the *image-config* is read from
+~$HOME/.config/refugue/images/default.image.config.py~.
+
+See ~info/examples/user_config~ for example configuration files to
+follow along with in the [[*Concepts][Concepts]] section.
+
 ** Concepts
 
+*** The Network of Peers
 
-*** Peers
+~Refugue~ functions within a set of known peers. A single network is
+defined and configured in a configuration file.
+
+Currently the format is just in python which allows for generating
+networks if you want, but may not be compatible with your security
+model. Static config options are likely in the future once APIs
+stabilize.
+
+By default there is a user network in the refugue config file called
+~network.config.py~.
 
 Peers are a name (technically a *petname* which is controlled by the
 user and no one else) and what ammounts to a URI for setting up
@@ -100,7 +142,7 @@ at invocation time depending on the host you are running from. This
 means you never have to actually type full URIs to move data. That is
 WAN, LAN, and even PCI networks are all treated the same.
 
-There are two types of peers: hosts and drives.
+There are two types of peers: hosts (~HOSTS~)and drives (~DRIVES~).
 
 **** Host Peers
 
@@ -149,12 +191,33 @@ alien-native pairs (~PEER_MOUNTS~).
 **** Peer Connections
 
 To connect to peers for remote invocation a set of *connections*
-should be defined and associated with host peers (~HOST_CONNECTIONS~).
+should be defined and associated with host peers (~CONNECTIONS~).
 
 The protocol also allows for the definition of connections to non-peer
-hosts to allow for network hopping.
+hosts to allow for network hopping etc.
 
-*** Replicas
+*** Images, Replicas, Working Sets, and Sync Pairs
+
+**** Images
+
+The next most important concept is that of an *image*.
+
+For a given network there can possibly be any number of images
+depending on you use cases.  Each image is configured in a python
+config file and is contained in the directory called ~images~ in the
+config dir by default. Additionally, for user configurations the
+~default.image.config.py~ will be used if none are specified
+differently.
+
+An image is just a collection of replicas (~REPLICAS~) but is what you
+would conceptually think of as a full working copy of the files.
+
+
+**** Replicas
+
+Because these files can live anywhere on a peer filesystem each
+replica is associated with a prefix path which gives the point at
+which it's file subtree begins (~REPLICA_PREFIXES~).
 
 As mentioned above replicas define a concrete copy of a single source
 tree of files that is filtered to a *working set*. It is critical to
@@ -165,37 +228,103 @@ and refer to the set of files in an image after the application of the
 narrowings/filters. In practice this means that a working set is just
 a collection of filters.
 
-A replica which is the full image (the union of all of replicas
-present on all peers within a ~refugue~ network) is called a *complete
-replica* and is a *complete wset*.
-
-**** Replica Names & Refinements
-
 Replicas must always be associated with a peer and so their names must
 contain the peer.
-
-If there is a peer called "foo" then the default replica for that peer
-is also called ~foo~.
 
 Peers can contain multiple replicas though and these separate replicas
 are named by *refinements* which look similar to file paths.
 
-Technically the ~foo~ replica above is short for the default
-refinement which is dependent on whether the peer is a drive or a
-host. For a host this would be ~foo/home~ and for a drive this would
-be ~foo/user~. Some refinements (like ~home~, ~user~, and ~root~ set
-in ~REFINEMENT_REPLICA_PREFIXES~) have fixed meanings corresponding to
-path prefixes for replicas. Non-reserved refinements can have specific
-prefixes for replicas defined for them (~REPLICA_PREFIXES~).
-
-
 **** Working Sets
 
-Definition of working sets is a WIP at the moment. Currently they take
-the form of filters to ~rsync~ which are lists of include & exclude
-expressions which are similar to unix-like file globbing. This may
-change in the future with a more general syntax (probably based on
-regexes, PEGs, or custom file hierarchy schemas).
+Working sets (as of now and likely to change) are simply a collection
+of a list of exclude (~REPLICA_EXCLUDES~) and include
+(~REPLICA_INCLUDES~) patterns exactly as ~rsync~ interprets them.
 
-See the ~REPLICA_EXCLUDES~ and ~REPLICA_INCLUDES~ configuration
-variables.
+It is similar to unix-like file globbing. But can be a little tricky to get right.
+
+This most probably will change in the future with a more general
+syntax probably based on regexes, PEGs, or custom file hierarchy
+schemas.
+
+
+**** Sync Pairs
+
+A sync pair is simply a non-commutative (i.e. order matters) pairing
+of two replicas along with the policies for synchronizing them.
+
+Pairs are made in the ~PAIR_OPTIONS~ value which has 3-tuple keys
+corresponding to:
+
+- source replica
+- target replica
+- associativity indicator
+
+# TOREV: should prbably get rid of this part and in the code and let
+# python code deal with it
+The associativity indicator can be used to indicate which direction
+the pair implies. The possible values are:
+
+- ~-->~ :: one-way from source to target
+- ~<-->~ :: both ways
+
+The ~<-->~ is just a short cut so that you don't have to permute your
+pairs if the sync options are the same.
+
+If a specific sync pair is not given the default will be applied.
+
+The default is either the ~DEFAULT_PAIR_OPTIONS~ value in the config
+file or the safest default hardcoded into the CLI program (i.e. no
+flags with backup is always the safest).
+
+The two values each sync pair must have are the ~sync~ policy options
+and the ~transport~ policy options.
+
+**** Sync Policies
+
+# TODO: 
+
+Four options:
+
+- inject
+- clobber
+- clean
+- prune
+
+Explain..
+
+**** Transport Policies
+
+This is mostly self-explanatory and allows for configuration of
+details that are orthogonal to the actual final state of the replicas.
+
+***** Backups
+
+The ~backup~ option is just what is implemented by rsync. You can
+choose from either renaming or using a backup dir.
+
+Renaming strategy copies ever file before overwriting it and appends a
+~.refugue-backup~ suffix to it.
+
+YOu can then later find, diff, and remove these pretty easily with
+the find tool (and in the future a refugue specific commands):
+
+List all backups in a replica ~host/tree~ that starts at ~$REP_PATH~:
+
+#+begin_src bash
+  find $REP_PATH -name "*.refugue-backup" -print
+#+end_src
+
+Remove all of them:
+
+#+begin_src bash
+  find $REP_PATH -name "*.refugue-backup" -delete
+#+end_src
+
+NOTE: currently the 'dir' method is not tested.
+
+The 'dir' option will save all backups to a configured
+directory. Default this is ~$HOME/.local/share/refugue/backups/~.
+
+***** Compression
+
+Just set 'auto' and the ~-z~ option will be passed to rsync.

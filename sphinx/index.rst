@@ -2,8 +2,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-refugue : Manage data working sets between computers and drives
-====================================================
+Refugue : Move data working sets between your different computers and drives
+============================================================================
 
 .. toctree::
    :maxdepth: 1

@@ -1,5 +1,40 @@
-* refugue
+* Refugue
 
+Refugue is a tool for managing the movement of working sets of
+file-based data around to different computers and storage devices.
+
+*** Problems to Solve
+
+Working outside a version control system by necessity and ever wanted
+to have a subset of files on your laptop but not have it force you to
+reorganize your entire file-hierarchy?
+
+Ever start writing ~rsync~ commands with a dizzying number of options
+and twiddling with filters and exclude patterns?
+
+#+begin_src bash
+rsync -a -v -hh --stats -i --update --backup --suffix='.rsync_backup' -z     --include='lab/' --include='lab/projects/' --include='lab/projects/projectA/' --include='lab/resources/' --include='lab/resources/project-resources/' --include='lab/resources/project-resources/ProjectA/' --exclude='personal' --exclude='lab' --exclude='incoming' --exclude='outgoing' --exclude='reading' --exclude='bin' --exclude='programs' --exclude='lab/*' --exclude='lab/projects/*' --exclude='lab/resources/*' --exclude='lab/resources/project-resources/*' --exclude='lab/resources/project-resources/**.sqlite3' --exclude='lab/resources/project-resources/ProjectA/specific-things/*/jobs/**.sqlite3' --exclude='*__pycache__*' --exclude='*.stversions' --exclude='*.rsync_backup' --exclude='*.git' --exclude='*.hg' --exclude='*.svn' --exclude='_conda_envs' --exclude='_venv' --exclude='_venvs' --exclude='node_modules' '/home/user/tree/' user@my.domain.place:/tree'
+#+end_src
+
+*** The solution:
+
+1. Define your personal network of *peers* with *pet names*
+2. Define the locations and *working sets* (*replicas*) for a collection
+   of files (*image*)
+3. Pair replicas with different *sync policies*
+4. Version it all.
+5. From any computer move files like:
+
+#+begin_src bash
+refugue hostA/replica hostB/replica
+#+end_src
+
+
+** Install
+
+#+begin_src bash
+pip install git+https://github.com/salotz/refugue.git
+#+end_src
 
 ** Docs and Info
 
@@ -7,12 +42,15 @@ See the [[file:./info][info]] directory for the documentation and history of the
 project. The [[file:./info/README.org][README]] serves as an index. These files are (mostly) in
 emacs org-mode and serve as the primary source of documentation. 
 
-Other "rendered" versions may exist and be published. The default
-location is at
-[[https://salotz.github.io/refugue][salotz.github.io/refugue]]
-in HTML rendered with Sphinx.
+# Other "rendered" versions may exist and be published. The default
+# location is at
+# [[https://salotz.github.io/refugue][salotz.github.io/refugue]].
 
-** COMMENT Maintenance Intent
+** Maintenance Intent
+
+I personally use this library and provide no guarantees that anything
+will remain stable or that I will fix anything at this time. It is
+still alpha grade software.
 
 ** Developing
 
