@@ -60,7 +60,7 @@ class WorkingSet():
 
         """
 
-        fq_replica = f"{peer}/{refinement}"
+        fq_replica = f"{peer.name}/{refinement}"
 
         ## INCLUDES
 

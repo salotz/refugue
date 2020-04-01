@@ -55,13 +55,13 @@ class RsyncProtocol(SyncProtocol):
 
         # includes
         if len(src.wset.includes) > 0:
-            includes = sec.wset.includes
+            includes = src.wset.includes
         else:
             includes = ()
 
         # excludes
         if len(src.wset.excludes) > 0:
-            excludes = sec.wset.excludes
+            excludes = src.wset.excludes
         else:
             excludes = ()
 
