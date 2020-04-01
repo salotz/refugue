@@ -16,14 +16,20 @@ See the git commit log history for full details.
 *** Growth
 
 
+** [0.0.1a0.dev0] - 2020-04-01
+
+First functional release. Here are the current features:
+
+- Command line tool: ~refugue~
+- tool configurable with ~refugue.toml~
+- networks configurable with ~network.config.py~ files
+- images configurable with ~image.config.py~ files
+- default network and image configurations through standard configuration directory
+- supports use of rsync
+- fabric allows remote execution of commands
+- pretty decent documentation introducing the motivation and background
+
+
 ** [0.0.0a0.dev0] - 2020-03-09
 
-*** Breakages
-
-*** Regressions
-
-*** Growth
-
-
-
-
+Prehistory
