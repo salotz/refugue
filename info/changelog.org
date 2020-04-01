@@ -7,18 +7,15 @@ Adheres to [[https://github.com/salotz/rfcs/blob/master/rfcs/salotz.002_semantic
 
 See the git commit log history for full details.
 
-** Unreleased
+** [0.0.1] - Unreleased
+
+First functional release.
 
 *** Breakages
 
 *** Regressions
 
 *** Growth
-
-
-** [0.0.1a0.dev0] - 2020-04-01
-
-First functional release. Here are the current features:
 
 - Command line tool: ~refugue~
 - tool configurable with ~refugue.toml~
