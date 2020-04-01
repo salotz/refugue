@@ -4,6 +4,9 @@
 
 From the refugue main directory.
 
+
+To the same filesystem just another replica:
+
 #+begin_src bash
 refugue \
     --dry \
@@ -11,4 +14,26 @@ refugue \
     --image tests/jigs/dev/images/default.image.config.py \
     ostrich/tree \
     ostrich/scratch
+#+end_src
+
+To a thumb drive:
+#+begin_src bash
+refugue \
+    --dry \
+    --network tests/jigs/dev/network.config.py \
+    --image tests/jigs/dev/images/default.image.config.py \
+    ostrich/tree \
+    boxwood/tree
+#+end_src
+
+
+To a remote host:
+
+#+begin_src bash
+refugue \
+    --dry \
+    --network tests/jigs/dev/network.config.py \
+    --image tests/jigs/dev/images/default.image.config.py \
+    ostrich/tree \
+    junco/tree
 #+end_src

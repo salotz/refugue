@@ -183,7 +183,7 @@ class RsyncProtocol(SyncProtocol):
                 path=target_replica_path,
             )
         else:
-            target_endpoint = rsync.Endpoint(
+            target_endpoint = rsync.Endpoint.construct(
                 path=target_replica_path,
                 user=target_conn['user'],
                 host=target_conn['host'],

@@ -268,13 +268,15 @@ def cli(
 
         # the possible names
         sync_names = [opt for _, opt in SYNC_OPTIONS]
-        sync_abbrevs = [opt for abbrev, _ in SYNC_OPTIONS]
+        sync_abbrevs = [abbrev for abbrev, _ in SYNC_OPTIONS]
 
         # initialize
         sync_spec = {opt : False for opt in sync_names}
 
         # parse
-        sync_opts = sync.strip().split(',')
+        sync_opts = {}
+        if sync.strip() != '':
+            sync_opts = sync.strip().split(',')
 
         # turn them on that are given in the string
         for opt in sync_opts:
@@ -391,25 +393,35 @@ def cli(
 
     # the create command if asked for
     if create:
+
+        # get the context to execute it on
+        target_cx = image.network.resolve_peer_context(local_cx, sync_pair.target.peer)
+
+        # get the path to create on that context
         target_replica_path = image.resolve_replica_path(
             local_cx,
             sync_pair.target,
         )
 
+        # the command
         create_command = f"mkdir -p {target_replica_path}"
 
-    # confirm this is okay to run
-    print("The generated command:")
-    print("--------------------------------------------------------------------------------")
 
-    if create:
+        # Preparation commands to run
+        print("\nTarget Peer preparation commands:")
+        print("--------------------------------------------------------------------------------")
         print(create_command)
+        print("--------------------------------------------------------------------------------")
 
+    # confirm this is okay to run
+    print("\nThe generated command:")
+    print("--------------------------------------------------------------------------------")
     print(confirm_message)
     print("--------------------------------------------------------------------------------")
 
     # get confirmation if not already
     if not yes:
+
         yes = confirm(
             f"Run this command on the host: '{sync_pair.src.peer.name}' via '{src_conn}'?",
             assume_yes=False,
@@ -417,10 +429,19 @@ def cli(
 
     if yes:
 
-        print(f"Running command on host: '{sync_pair.src.peer.name}' via connection: '{src_conn}'")
+        # Create if necessary
+        if create:
+            print(f"Running preparation command on target host:")
+            print("--------------------------------------------------------------------------------")
+            target_cx.run(create_command)
+            print("--------------------------------------------------------------------------------")
+
+        print(f"Running command on source host: '{sync_pair.src.peer.name}' "
+              "via connection: '{src_conn}'")
         print("Command Output:")
         print("--------------------------------------------------------------------------------")
-        ex_cx.run(create_command)
+
+        #### SYNC
         sync_func(ex_cx)
         print("--------------------------------------------------------------------------------")
         print("Refugue says: Synchronization Finished")
