@@ -18,9 +18,10 @@ remote-pdb
 # utilities
 # bumpversion
 
-# task running
+# tools
 invoke
 fabric
+jubeo
 
 # docs
 sphinx
