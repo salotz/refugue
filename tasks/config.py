@@ -7,6 +7,7 @@ from .sysconfig import *
 ## Customize these for all features
 
 PROJECT_SLUG = "refugue"
+VERSION="0.0.1a0.dev0"
 
 
 
