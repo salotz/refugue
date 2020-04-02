@@ -1,0 +1,35 @@
+* How Tos
+
+* Tips & Tricks
+
+
+** Use Dry Run to see changes
+
+Use of the dry-run is recommended before each transfer!! It is fast
+and easy to do and allows you to see exactly will happen.
+
+#+begin_src bash
+refugue --dry source/main target/main
+#+end_src
+
+** Look at only the changed files needing backups
+
+If you want to just see how the existing files on a target will change
+use the 'inject' sync policy flag.
+
+This will give you some idea of what files might be destroyed and in
+need of backup because it ignores creating or deleting new files.
+
+This will show the files that will be changed without
+"clobbering". That is only files on target that have older timestamps
+than on source:
+
+#+begin_src bash
+refugue --dry --sync='i' source/main target/main
+#+end_src
+
+You can add clobbering too to see if it is okay:
+
+#+begin_src bash
+refugue --dry --sync='i,k' source/main target/main
+#+end_src
