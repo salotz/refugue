@@ -328,7 +328,7 @@ class Image():
 
         # fully expand the replica prefix if it has variables and such
         # by using the replica's context
-        replica_path = replica_cx.run(f'echo "{replica_path}"', hide='out').stdout.strip()
+        replica_path = replica_cx.run(f'echo "{replica_path}"', hide='out', pty=True).stdout.strip()
 
         return replica_path
 
@@ -376,9 +376,5 @@ class SyncPair():
             self.target,
             self.sync_spec,
         )
-
-        # get the source context from the network
-        src_cx = self.image.network.resolve_peer_context(local_cx, self.src.peer)
-
         # return them
-        return src_cx, sync_func, confirm_message
+        return sync_func, confirm_message

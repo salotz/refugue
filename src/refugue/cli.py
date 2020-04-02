@@ -7,7 +7,13 @@ import click
 from invoke import Context
 import toml
 
-from .network import Network
+from refugue.network import (
+    Network,
+    RefugueNetworkError,
+    LocalConnection,
+    ImpossibleConnection,
+    SSHConnection,
+)
 from .image import Image
 from .sync import (
     SyncPolicy,
@@ -378,24 +384,32 @@ def cli(
     sync_protocol = RsyncProtocol
 
     # get the context and function to execute
-    ex_cx, sync_func, confirm_message = sync_pair.sync(
+    sync_func, confirm_message = sync_pair.sync(
         local_cx,
         sync_protocol,
     )
 
+    # get the connections and contexts
     src_conn = image.network.resolve_peer_connection(sync_pair.src.peer)
+    target_conn = image.network.resolve_peer_connection(sync_pair.src.peer)
 
-    if src_conn is None:
+    src_cx = image.network.resolve_peer_context(local_cx, sync_pair.src.peer)
+    target_cx = image.network.resolve_peer_context(local_cx, sync_pair.target.peer)
+
+
+
+    if issubclass(type(src_conn), LocalConnection):
         src_conn = "localhost"
 
-    else:
-        src_conn = f"{src_conn['user']}@{src_conn['host']}"
+    elif issubclass(type(src_conn), SSHConnection):
+        src_conn = f"{src_conn.user}@{src_conn.host}"
+
+    elif issubclass(type(src_conn), ImpossibleConnection):
+
+        raise RefugueNetworkError("")
 
     # the create command if asked for
     if create:
-
-        # get the context to execute it on
-        target_cx = image.network.resolve_peer_context(local_cx, sync_pair.target.peer)
 
         # get the path to create on that context
         target_replica_path = image.resolve_replica_path(
@@ -442,7 +456,7 @@ def cli(
         print("--------------------------------------------------------------------------------")
 
         #### SYNC
-        sync_func(ex_cx)
+        sync_func(local_cx, src_cx, target_cx)
         print("--------------------------------------------------------------------------------")
         print("Refugue says: Synchronization Finished")
 

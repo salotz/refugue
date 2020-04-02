@@ -26,6 +26,34 @@ __all__ = [
 ]
 
 
+
+@dc.dataclass
+class LocalConnection():
+    """A local context, no need to create a separate Connection object."""
+    pass
+
+@dc.dataclass
+class ImpossibleConnection():
+    """No connection to the requested peer is possible."""
+    pass
+
+@dc.dataclass
+class SSHConnection():
+    """Connection via SSH is possible.
+
+    The host and username are given but normal fabric configuration is
+    used otherwise.
+
+    """
+    host: str
+    user: str
+
+
+class RefugueNetworkError(ValueError):
+    """Error for network failures."""
+    pass
+
+
 class PeerTypes(Enum):
     host = 1
     drive = 2
@@ -158,7 +186,7 @@ class Network():
 
 
     def construct_connection(self,
-                             conn_d,
+                             ssh_conn,
     ):
         """Construct an object inheriting from invoke.Context for remote
         execution.
@@ -178,14 +206,14 @@ class Network():
         """
 
         conn = fab.Connection(
-            conn_d['host'],
-            user=conn_d['user'],
+            host=ssh_conn.host,
+            user=ssh_conn.user,
         )
         return conn
 
     def resolve_peer_connection(self,
                                 peer,
-    ):
+    ) -> Union[ ImpossibleConnection, LocalConnection, SSHConnection ]:
         """Get the spec for creating a connection spec (not a full context).
 
         Parameters
@@ -196,9 +224,7 @@ class Network():
         Returns
         -------
 
-        conn_spec : dict or None
-            If a dict should be able to make a Connection from it. If
-            None it is a local context.
+        connection : Connection object
 
         """
 
@@ -210,23 +236,28 @@ class Network():
             # a fully-qualified domain name FQDN and is what is returned
             # by `platform.node()`)
 
+            peer_node_aliases = [peer.name]
+
             # first resolve the alias of the peer if there is one
             if peer.name in self.network_config['HOST_NODE_ALIASES']:
-                peer_node_aliases = self.network_config['HOST_NODE_ALIASES'][peer.name]
-
-            # otherwise the peer name is the node name
-            else:
-                peer_node_aliases = [peer.name]
+                peer_node_aliases += self.network_config['HOST_NODE_ALIASES'][peer.name]
 
             # if we are on one of the recognized host node names its a
             # local context
             if platform.node() in peer_node_aliases:
-                peer_conn = None
+                peer_conn = LocalConnection()
 
             # otherwise we get the connection spec for this peer
             else:
 
-                peer_conn = self.network_config['CONNECTIONS'][peer.name]
+                if peer.name not in self.network_config['CONNECTIONS']:
+                    peer_conn = ImpossibleConnection()
+                else:
+                    conn_d = self.network_config['CONNECTIONS'][peer.name]
+                    peer_conn = SSHConnection(
+                            host = conn_d['host'],
+                            user = conn_d['user'],
+                    )
 
         # DRIVE peers are assumed to be mounted on the local host node
         # peer
@@ -236,7 +267,7 @@ class Network():
             # when this is supported
 
             # the context is always the local one
-            peer_conn = None
+            peer_conn = LocalConnection()
 
         elif peer.peer_type is None:
             raise ValueError(f"Unknown peer type {peer.peer_type} for peer {peer}")
@@ -268,14 +299,23 @@ class Network():
 
         peer_conn = self.resolve_peer_connection(peer)
 
-        if peer_conn is None:
-            peer_cx = local_cx
+        # if its a local connection just use the existing local
+        # context
+        if issubclass(type(peer_conn), LocalConnection):
+            return local_cx
 
-        # assume it is a valid connection spec
+        # if it is a remote SSH connection make a fabric Connection
+        # context for it
+        elif issubclass(type(peer_conn), SSHConnection):
+            return self.construct_connection(peer_conn)
+
+        # if it is not possible to connect raise an error
+        elif issubclass(type(peer_conn), ImpossibleConnection):
+            raise RefugueNetworkError(f"Impossible connection to peer: {peer}")
+
+        # don't know how to connect
         else:
-            peer_cx = self.construct_connection(peer_conn)
-
-        return peer_cx
+            raise TypeError(f"Unknown connection type: {peer_conn}")
 
     def resolve_peer_mount(self,
                            peer_cx,

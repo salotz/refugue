@@ -15,6 +15,14 @@ from refugue.image import (
     Replica,
     Image,
 )
+
+from refugue.network import (
+    RefugueNetworkError,
+    LocalConnection,
+    ImpossibleConnection,
+    SSHConnection,
+)
+
 from refugue.sync import (
     SyncProtocol,
     SyncSpec,
@@ -150,10 +158,6 @@ class RsyncProtocol(SyncProtocol):
 
         ## Generate enpoint URLs
 
-        # get the conn specs for user and host etc.
-        src_conn = image.network.resolve_peer_connection(src.peer)
-        target_conn = image.network.resolve_peer_connection(target.peer)
-
         # get the paths the file paths for the replicas
         src_replica_path = image.resolve_replica_path(
             local_cx,
@@ -167,28 +171,104 @@ class RsyncProtocol(SyncProtocol):
 
 
         # generate the rsync.Endpoints
-        if src_conn is None:
+
+        # get the conn specs for user and host etc.
+
+        src_conn = image.network.resolve_peer_connection(src.peer)
+        target_conn = image.network.resolve_peer_connection(target.peer)
+
+        # one or the other can be remote but not both. We can't always
+        # rely on the source being local since endpoints you are
+        # running from may not be IP addressable so we want to allow
+        # for remote 'pull' as well as 'push'
+
+        # so determine whether each endpoint is remote, local, or
+        # unreachable to the invocation context:
+
+        src_reachable = (False
+                         if issubclass(type(src_conn), ImpossibleConnection)
+                         else True)
+        target_reachable = (False
+                            if issubclass(type(target_conn), ImpossibleConnection)
+                            else True)
+
+        # raise the error if either are unreachable
+        if not src_reachable:
+            raise RefugueNetworkError(f"Unreachable peer: {src.peer.name}")
+
+        if not target_reachable:
+            raise RefugueNetworkError(f"Unreachable peer: {target.peer.name}")
+
+
+        # determine which locality to execute command on
+        src_local = (True
+                     if issubclass(type(src_conn), LocalConnection)
+                     else False)
+        target_local = (True
+                        if issubclass(type(target_conn), LocalConnection)
+                        else False)
+
+        if src_local and target_local:
+
+            # both local doesn't matter, execute on src
+            ex_endpoint = 'src'
+
             src_endpoint = rsync.Endpoint.construct(
                 path=src_replica_path,
-            )
-        else:
-            src_endpoint = rsync.Endpoint.construct(
-                path=src_replica_path,
-                user=src_conn['user'],
-                host=src_conn['host'],
             )
 
-        if target_conn is None:
             target_endpoint = rsync.Endpoint.construct(
                 path=target_replica_path,
             )
-        else:
+
+        elif (not src_local and not target_local):
+
+            # neither are local execute on src by convention
+            ex_endpoint = 'src'
+
+
+            # make the src endpoint local
+            src_endpoint = rsync.Endpoint.construct(
+                path=src_replica_path,
+            )
+
             target_endpoint = rsync.Endpoint.construct(
                 path=target_replica_path,
                 user=target_conn['user'],
                 host=target_conn['host'],
             )
 
+
+        elif src_local and not target_local:
+
+            # execute on src
+            ex_endpoint = 'src'
+
+            src_endpoint = rsync.Endpoint.construct(
+                path=src_replica_path,
+            )
+
+            target_endpoint = rsync.Endpoint.construct(
+                path=target_replica_path,
+                user=target_conn['user'],
+                host=target_conn['host'],
+            )
+
+        elif target_local and not src_local:
+
+            # execute on target
+            ex_endpoint = 'target'
+
+            src_endpoint = rsync.Endpoint.construct(
+                path=src_replica_path,
+                user=src_conn.user,
+                host=src_conn.host,
+            )
+
+
+            target_endpoint = rsync.Endpoint.construct(
+                path=target_replica_path,
+            )
 
         # generate the rsync command
         command = rsync.Command(
@@ -204,7 +284,19 @@ class RsyncProtocol(SyncProtocol):
 
         # return this closure which is the callable that actually
         # executes the sync process
-        def _sync_func(src_cx):
-            src_cx.run(command_str)
+
+        if ex_endpoint == 'src':
+
+            def _sync_func(local_cx, src_cx, target_cx):
+
+                src_cx.run(command_str, pty=True)
+
+        elif ex_endpoint == 'target':
+
+            def _sync_func(local_cx, src_cx, target_cx):
+
+                target_cx.run(command_str, pty=True)
+
+
 
         return _sync_func, command_str
