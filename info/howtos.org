@@ -33,3 +33,64 @@ You can add clobbering too to see if it is okay:
 #+begin_src bash
 refugue --dry --sync='i,k' source/main target/main
 #+end_src
+
+** List, Diff, & Remove backup files
+
+Currently this isn't supported directly by refugue and it might. But
+these methods will always work.
+
+*** List all backup files
+
+List all backups in a replica ~host/tree~ from the current
+directory. Replace the '.' for other dirs:
+
+#+begin_src bash
+  find . -name "*.refugue-backup" -print
+#+end_src
+
+
+*** Diff all backup files
+
+Sometimes files get overwritten but nothing actually changed. To get a
+quick overview of whether it is safe to remove backups, we look at the
+diffs with a small python script:
+
+#+begin_src python
+  from invoke import Context
+  from pathlib import Path
+
+  def refugue_backup_diff(path):
+
+      cx = Context()
+
+      result = cx.run(f'find {path} -name "*.refugue-backup" -print', hide=True)
+      backup_paths = [Path(p) for p in result.stdout.strip().split('\n')]
+
+      # for each backup find the corresponding file
+      diff_pairs = []
+      for backup_path in backup_paths:
+          path = backup_path.parent / backup_path.stem
+
+          print("--------------------------------------------------------------------------------")
+          print(f"DIFF FOR: {path}")
+          cx.run(f"diff {path} {backup_path}", pty=True)
+
+
+  if __name__ == "__main__":
+
+      import sys
+
+      path = sys.argv[1]
+
+      refugue_backup_diff(path)
+#+end_src
+
+
+*** Remove all backup files
+
+You can remove all of them with:
+
+#+begin_src bash
+  find . -name "*.refugue-backup" -delete
+#+end_src
+

@@ -305,20 +305,6 @@ choose from either renaming or using a backup dir.
 Renaming strategy copies ever file before overwriting it and appends a
 ~.refugue-backup~ suffix to it.
 
-YOu can then later find, diff, and remove these pretty easily with
-the find tool (and in the future a refugue specific commands):
-
-List all backups in a replica ~host/tree~ that starts at ~$REP_PATH~:
-
-#+begin_src bash
-  find $REP_PATH -name "*.refugue-backup" -print
-#+end_src
-
-Remove all of them:
-
-#+begin_src bash
-  find $REP_PATH -name "*.refugue-backup" -delete
-#+end_src
 
 NOTE: currently the 'dir' method is not tested.
 
