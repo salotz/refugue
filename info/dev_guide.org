@@ -514,7 +514,7 @@ valid ones.
 The target locations for changing versions are in the following files:
 
 - [ ] ~setup.py~
-- [ ] ~src/refugue/__init__.py~
+- [ ] ~src/refugue/_version.py~
 - [ ] ~tasks/config.py~
 - [ ] ~sphinx/conf.py~
 - [ ] ~conda/conda-forge/meta.yaml~ (optional)
