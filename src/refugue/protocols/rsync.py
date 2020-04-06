@@ -1,3 +1,4 @@
+from pathlib import Path
 import dataclasses as dc
 from typing import (
     Optional,
@@ -145,6 +146,7 @@ class RsyncProtocol(SyncProtocol):
                       src: Replica,
                       target: Replica,
                       sync_spec: SyncSpec,
+                      subtree = None,
     ) -> Callable[[Context], None]:
 
         ## Validate
@@ -159,16 +161,21 @@ class RsyncProtocol(SyncProtocol):
         ## Generate enpoint URLs
 
         # get the paths the file paths for the replicas
-        src_replica_path = image.resolve_replica_path(
+        src_replica_path = Path(image.resolve_replica_path(
             local_cx,
             src,
-        )
+        ))
 
-        target_replica_path = image.resolve_replica_path(
+        target_replica_path = Path(image.resolve_replica_path(
             local_cx,
             target,
-        )
+        ))
 
+        if subtree is not None:
+            import pdb; pdb.set_trace()
+
+            src_replica_path = src_replica_path / subtree
+            target_replica_path = target_replica_path / subtree
 
         # generate the rsync.Endpoints
 
@@ -214,11 +221,11 @@ class RsyncProtocol(SyncProtocol):
             ex_endpoint = 'src'
 
             src_endpoint = rsync.Endpoint.construct(
-                path=src_replica_path,
+                path=str(src_replica_path),
             )
 
             target_endpoint = rsync.Endpoint.construct(
-                path=target_replica_path,
+                path=str(target_replica_path),
             )
 
         elif (not src_local and not target_local):
@@ -229,11 +236,11 @@ class RsyncProtocol(SyncProtocol):
 
             # make the src endpoint local
             src_endpoint = rsync.Endpoint.construct(
-                path=src_replica_path,
+                path=str(src_replica_path),
             )
 
             target_endpoint = rsync.Endpoint.construct(
-                path=target_replica_path,
+                path=str(target_replica_path),
                 user=target_conn['user'],
                 host=target_conn['host'],
             )
@@ -245,11 +252,11 @@ class RsyncProtocol(SyncProtocol):
             ex_endpoint = 'src'
 
             src_endpoint = rsync.Endpoint.construct(
-                path=src_replica_path,
+                path=str(src_replica_path),
             )
 
             target_endpoint = rsync.Endpoint.construct(
-                path=target_replica_path,
+                path=str(target_replica_path),
                 user=target_conn['user'],
                 host=target_conn['host'],
             )
@@ -260,14 +267,14 @@ class RsyncProtocol(SyncProtocol):
             ex_endpoint = 'target'
 
             src_endpoint = rsync.Endpoint.construct(
-                path=src_replica_path,
+                path=str(src_replica_path),
                 user=src_conn.user,
                 host=src_conn.host,
             )
 
 
             target_endpoint = rsync.Endpoint.construct(
-                path=target_replica_path,
+                path=str(target_replica_path),
             )
 
         # generate the rsync command

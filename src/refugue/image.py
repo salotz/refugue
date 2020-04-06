@@ -335,6 +335,7 @@ class Image():
     def pair(self,
              local_cx,
              sync_spec,
+             subtree,
              src,
              target,
     ):
@@ -348,6 +349,7 @@ class Image():
             src = src_replica,
             target = target_replica,
             sync_spec = sync_spec,
+            subtree = subtree,
         )
 
         return sync_pair
@@ -359,6 +361,7 @@ class SyncPair():
     image: Image
     src: Replica
     target: Replica
+    subtree: Optional[Path]
     sync_spec: SyncSpec
 
     def sync(self,
@@ -368,6 +371,8 @@ class SyncPair():
         """Perform the sync specified by this SyncPair choosing a protocol to
         do it over, e.g. rsync"""
 
+        # TODO: consider the subpath
+
         # generate the function
         sync_func, confirm_message = sync_protocol.gen_sync_func(
             local_cx,
@@ -375,6 +380,7 @@ class SyncPair():
             self.src,
             self.target,
             self.sync_spec,
+            subtree = self.subtree,
         )
         # return them
         return sync_func, confirm_message

@@ -197,6 +197,9 @@ def confirm(question, assume_yes=True):
               type=click.Path(exists=True),
               default=None,
               help="Image specification file to use.")
+@click.option("--subtree",
+              default=None,
+              help="Subtree to restrict sync of image to. Relative path to root of replica.")
 @click.option("--sync",
               default=None,
               help="Comma separated list of sync policy flags to use or None, "
@@ -229,7 +232,7 @@ def confirm(question, assume_yes=True):
 @click.argument("target")
 def cli(
         # file-based specifications
-        network, image,
+        network, image, subtree,
         # sync spec overrides from image
         sync,
         # transport options
@@ -374,6 +377,7 @@ def cli(
     sync_pair = image.pair(
         local_cx,
         sync_spec,
+        subtree,
         src,
         target,
     )
