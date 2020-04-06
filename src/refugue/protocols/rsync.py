@@ -172,7 +172,6 @@ class RsyncProtocol(SyncProtocol):
         ))
 
         if subtree is not None:
-            import pdb; pdb.set_trace()
 
             src_replica_path = src_replica_path / subtree
             target_replica_path = target_replica_path / subtree
