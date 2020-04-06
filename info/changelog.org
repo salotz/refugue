@@ -26,6 +26,7 @@ First functional release.
 - fabric allows remote execution of commands
 - pretty decent documentation introducing the motivation and background
 - both remote source and target supported
+- can choose subtrees of an image for sync
 
 
 ** [0.0.0a0.dev0] - 2020-03-09
