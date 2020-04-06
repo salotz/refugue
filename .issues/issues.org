@@ -1,0 +1,18 @@
+
+* Issues
+
+** TODO 0000: Support the "fill-in" option                          :feature:
+
+Add an option in the sync flag for fillin which will only add new
+files and will ignore the existing ones.
+
+Basically it uses the rsync flag: ~--ignore-existing~
+
+It would look something like:
+
+#+begin_src bash
+refugue --sync='f' src dest
+#+end_src
+
+
+
