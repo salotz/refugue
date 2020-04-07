@@ -96,8 +96,16 @@ class RsyncProtocol(SyncProtocol):
         if transport.dry:
             opt_flags.append('dry-run')
 
+
+        # TODO: this should be set intelligently depending on location
+        # of replicas but we just always turn on for now. This isn't
+        # so bad for modern computers anyhow.
         if transport.compression == 'rsync':
             opt_flags.append('compress')
+
+        if transport.compression == 'auto':
+            opt_flags.append('compress')
+
 
         if transport.backup == 'rename':
             opt_flags.append('backup')
@@ -240,8 +248,8 @@ class RsyncProtocol(SyncProtocol):
 
             target_endpoint = rsync.Endpoint.construct(
                 path=str(target_replica_path),
-                user=target_conn['user'],
-                host=target_conn['host'],
+                user=target_conn.user,
+                host=target_conn.host,
             )
 
 
@@ -256,8 +264,8 @@ class RsyncProtocol(SyncProtocol):
 
             target_endpoint = rsync.Endpoint.construct(
                 path=str(target_replica_path),
-                user=target_conn['user'],
-                host=target_conn['host'],
+                user=target_conn.user,
+                host=target_conn.host,
             )
 
         elif target_local and not src_local:

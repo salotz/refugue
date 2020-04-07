@@ -324,6 +324,9 @@ def cli(
 
     ## Transport
 
+    # set compression to auto if not given
+    if compression is None:
+        compression = 'auto'
 
     transport_spec = dict(DEFAULT_TRANSPORT_OPTIONS)
 
@@ -420,6 +423,9 @@ def cli(
             local_cx,
             sync_pair.target,
         )
+
+        if subtree is not None:
+            target_replica_path = Path(target_replica_path) / subtree
 
         # the command
         create_command = f"mkdir -p {target_replica_path}"
